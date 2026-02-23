@@ -1,0 +1,108 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "github-copilot/gemini-3.1-pro-preview",
+  "agent": {
+    "build": {
+      "model": "github-copilot/gemini-3.1-pro-preview",
+      "max_steps": 3,
+      "permission": {
+        "bash": {
+          "git status *": "allow",
+          "git diff *": "allow",
+          "git add *": "allow",
+          "git commit *": "allow",
+          "git push *": "deny"
+        }
+      }
+    },
+    "fix": {
+      "model": "github-copilot/gemini-3.1-pro-preview",
+      "max_steps": 3,
+      "permission": {
+        "bash": {
+          "git status *": "allow",
+          "git diff *": "allow",
+          "git add *": "allow",
+          "git commit *": "allow",
+          "git push *": "deny"
+        }
+      }
+    },
+    "test": {
+      "model": "github-copilot/gemini-3.1-pro-preview",
+      "max_steps": 3,
+      "permission": {
+        "bash": {
+          "git status *": "allow",
+          "git diff *": "allow"
+        }
+      }
+    },
+    "document": {
+      "model": "github-copilot/gemini-3-flash-preview",
+      "max_steps": 2,
+      "permission": {
+        "bash": {
+          "git status *": "allow",
+          "git diff *": "allow"
+        }
+      }
+    },
+    "explore": {
+      "model": "github-copilot/gemini-3-flash-preview",
+      "max_steps": 3,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny"
+        }
+      }
+    },
+    "plan": {
+      "model": "github-copilot/gemini-3.1-pro-preview",
+      "max_steps": 3,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny"
+        }
+      }
+    },
+    "architect": {
+      "model": "github-copilot/gemini-3.1-pro-preview",
+      "max_steps": 3,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny"
+        }
+      }
+    },
+    "milestone": {
+      "model": "github-copilot/gemini-3.1-pro-preview",
+      "max_steps": 3,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git status *": "allow",
+          "git diff *": "allow",
+          "git log *": "allow",
+          "git show *": "allow",
+          "cat *": "allow",
+          "find *": "allow",
+          "ls *": "allow",
+          "head *": "allow",
+          "tail *": "allow",
+          "wc *": "allow",
+          "grep *": "allow",
+          "git push *": "deny",
+          "git merge *": "deny",
+          "git tag *": "deny",
+          "git checkout *": "deny",
+          "git branch *": "deny",
+          "rm *": "deny"
+        }
+      }
+    }
+  }
+}

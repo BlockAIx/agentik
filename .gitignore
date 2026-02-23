@@ -1,0 +1,15 @@
+
+# Runner state (workspace-level only)
+.budget_state.json
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Each project has its own standalone git repo — never track them here.
+# Git treats a subdirectory containing a .git folder as a "nested repo"
+# (gitlink) unless it is explicitly ignored. Ignoring the whole projects/
+# directory is the safest way to guarantee nothing leaks into the workspace
+# repo: no project source files, no project .git objects, no budget.json.
+projects/
+
+.vscode/

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentik"
+version = "0.1.0"
+description = "Autonomous development runner for AI-driven multi-project workflows"
+authors = [{name = "Thomas Heymelot"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pytest>=8.0",
+    "rich>=13.0",
+    "questionary>=2.0",
+]
+
+[project.urls]
+Repository = "https://github.com/BlockAIx/agentik"
+Documentation = "https://github.com/BlockAIx/agentik#readme"
+
+[project.scripts]
+agentik = "runner:main"
