@@ -173,8 +173,6 @@ repository with automatic branching and commits.
 
 ## ROADMAP.json reference
 
-![agentik](assets/dependencies.png)
-
 ### Task fields
 
 | Field         | Required           | Type             | Description                            |
