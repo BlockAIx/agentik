@@ -1,3 +1,4 @@
 pytest
 rich
 questionary
+pytest-cov
