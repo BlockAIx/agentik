@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Sparkles, Check, X, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
+import { Check, Loader2, Sparkles, X } from "lucide-react";
+import { useState } from "react";
 
 const ECOSYSTEMS = ["python", "deno", "node", "go", "rust"] as const;
 

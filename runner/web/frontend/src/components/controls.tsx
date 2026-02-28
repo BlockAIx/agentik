@@ -1,20 +1,20 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Play,
-  Square,
-  Gauge,
-  Loader2,
-  Clock,
-  Coins,
-  Zap,
-  RefreshCw,
-} from "lucide-react";
+import type { DryRunResult, ProjectDetail } from "@/lib/api";
 import { api } from "@/lib/api";
-import type { ProjectDetail, DryRunResult } from "@/lib/api";
+import {
+    Clock,
+    Coins,
+    Gauge,
+    Loader2,
+    Play,
+    RefreshCw,
+    Square,
+    Zap,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function Controls({
   projectName,

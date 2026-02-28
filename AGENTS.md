@@ -11,7 +11,7 @@ this before writing any code or modifying any project.
 pipeline:
 
 ```
-Build → Deps → Test → Fix (retry) → Static Checks → Static Fix (retry) → Document → Commit → Deploy hook
+Build → Deps → Test → Coverage → Fix (retry) → Static Checks → Static Fix (retry) → Review → Document → Commit → Notify → Deploy hook
 ```
 
 **Your job as `build` / `fix`:** implement one task exactly as specified, then
@@ -84,12 +84,30 @@ When you change anything that affects how the runner works, keep these in sync
 
 ```
 agentik/                     <- workspace root repo (runner tooling only)
-├── runner.py
+├── agentik.py
 ├── budget.json             <- global token limits
 ├── opencode.jsonc          <- agent definitions (do NOT edit during a task)
 ├── prompts/                <- prompt templates (build.md, fix.md, ...)
 ├── helpers/                <- workspace-level utilities (importable by runner)
 │   └── check_roadmap.py    <- ROADMAP structural validator (run before pipeline)
+├── runner/
+│   ├── config.py           <- constants, Rich console, prompt loader
+│   ├── opencode.py         <- opencode invocation wrappers
+│   ├── pipeline.py         <- main pipeline orchestration
+│   ├── roadmap.py          <- ROADMAP.json parsing and helpers
+│   ├── state.py            <- progress tracking, budget accounting
+│   ├── workspace.py        <- ecosystem detection, git operations
+│   ├── coverage.py         <- test coverage gating
+│   ├── diagnostics.py      <- structured failure reports
+│   ├── dryrun.py           <- dry-run cost / time estimation
+│   ├── graph_html.py       <- interactive HTML dependency graph
+│   ├── notify.py           <- webhook notification support
+│   ├── plan.py             <- ROADMAP generation from NL descriptions
+│   ├── review.py           <- human-in-the-loop review mode
+│   ├── rollback.py         <- git rollback on task failure
+│   └── web/                <- web UI dashboard
+│       ├── app.py          <- FastAPI backend + REST API
+│       └── frontend/       <- React + Tailwind + shadcn SPA
 ├── AGENTS.md
 ├── requirements.txt        <- runner deps
 └── projects/
@@ -188,6 +206,12 @@ projects/<your-project>/ROADMAP.json
   "ecosystem": "python",
   "preamble": "Brief description.",
   "git": { "enabled": true },
+  "review": true,
+  "min_coverage": 80,
+  "notify": {
+    "url": "https://hooks.slack.com/services/...",
+    "events": ["task_complete", "task_failed", "pipeline_done"]
+  },
   "deploy": {
     "enabled": true,
     "script": "scripts/deploy.sh",

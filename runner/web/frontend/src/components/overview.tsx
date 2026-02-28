@@ -1,15 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import type { GlobalBudget, ProjectDetail } from "@/lib/api";
 import {
-  Activity,
-  CheckCircle2,
-  Clock,
-  Coins,
-  Layers,
-  Zap,
+    Activity,
+    CheckCircle2,
+    Clock,
+    Coins,
+    Layers,
+    Zap,
 } from "lucide-react";
-import type { ProjectDetail, GlobalBudget } from "@/lib/api";
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;

@@ -29,6 +29,25 @@ builds, and resume support built in.
   number
 - **Git managed (opt-in)** — automatic branching, commits, merges, and tags
   when enabled
+- **Human-in-the-loop review** — optional pause after build to inspect diffs
+  and approve/reject before committing
+- **ROADMAP generation** — describe a project in plain English and let an AI
+  agent generate a valid `ROADMAP.json` for you
+- **Test coverage gating** — enforce minimum coverage thresholds; the pipeline
+  fails if coverage drops below the configured percentage
+- **Git rollback on failure** — automatically revert feature branch changes
+  when a task exceeds max attempts
+- **Webhook notifications** — send pipeline events (task complete, task failed,
+  pipeline done) to Slack, Discord, or any HTTP endpoint
+- **Dry-run / cost estimation** — preview token usage, estimated USD cost, and
+  time for remaining tasks without running anything
+- **Structured error diagnostics** — JSON failure reports saved per task with
+  last error, failing test, attempt count, and token spend
+- **Interactive HTML dependency graph** — open a standalone Mermaid-based graph
+  in your browser with colour-coded status and token budgets
+- **Web UI dashboard** — React + Tailwind + shadcn frontend with live
+  WebSocket updates, 8 tabs (Overview, Graph, Tasks, Logs, Editor, Generate,
+  Review, Controls), and full pipeline control via REST API
 
 ## Quickstart
 
@@ -108,8 +127,12 @@ An arrow-key project selector appears, then pick a mode:
 
 - **Run pipeline** — work through every uncompleted task
 - **Run pipeline (verbose)** — same, but stream full agent output
-- **Show dependency graph** — colour-coded task graph with status badges
+- **Dry-run (estimate cost)** — preview tokens, USD, and time without running
+- **Show dependency graph** — colour-coded task graph in terminal
+- **Open interactive graph** — launch a Mermaid.js HTML graph in your browser
+- **Generate ROADMAP from description** — describe a project, get a valid ROADMAP
 - **Generate project AGENTS.md** — create or regenerate per-project agent instructions
+- **Start web UI** — launch the React dashboard at `http://127.0.0.1:8420`
 
 Press **Ctrl-C** at any time to save state and resume later.
 
@@ -117,17 +140,20 @@ Press **Ctrl-C** at any time to save state and resume later.
 
 For each task agentik executes:
 
-| # | Phase   | What happens                                                           |
-|---|---------|------------------------------------------------------------------------|
-| 1 | Build   | opencode agent implements the module + unit tests                      |
-| 2 | Deps    | Installs any new dependencies the agent declared                       |
-| 3 | Test    | Runs ecosystem test suite (pytest / deno test / cargo test / etc.)     |
-| 4 | Fix     | If tests fail → fix agent patches code (same session, up to N retries) |
-| 5 | Static  | Lint & type checks (ruff / deno check+lint / tsc / go vet / clippy)    |
-| 6 | Stfix   | If static checks fail → fix agent resolves them (up to 2 retries)      |
-| 7 | Doc     | Document agent updates README                                          |
-| 8 | Commit  | `git add → commit → merge to develop` (when git is managed)           |
-| 9 | Deploy  | Runs deploy script if configured in ROADMAP (optional)                 |
+| #  | Phase    | What happens                                                           |
+|----|----------|------------------------------------------------------------------------|
+| 1  | Build    | opencode agent implements the module + unit tests                      |
+| 2  | Deps     | Installs any new dependencies the agent declared                       |
+| 3  | Test     | Runs ecosystem test suite (pytest / deno test / cargo test / etc.)     |
+| 4  | Coverage | Runs tests with coverage; fails if below `min_coverage` threshold      |
+| 5  | Fix      | If tests fail → fix agent patches code (same session, up to N retries) |
+| 6  | Static   | Lint & type checks (ruff / deno check+lint / tsc / go vet / clippy)    |
+| 7  | Stfix    | If static checks fail → fix agent resolves them (up to 2 retries)      |
+| 8  | Review   | Human-in-the-loop: show diff, wait for approve/reject (if enabled)     |
+| 9  | Doc      | Document agent updates README                                          |
+| 10 | Commit   | `git add → commit → merge to develop` (when git is managed)           |
+| 11 | Notify   | Send webhook notification for pipeline events (if configured)          |
+| 12 | Deploy   | Runs deploy script if configured in ROADMAP (optional)                 |
 
 ## Project structure
 
@@ -140,7 +166,18 @@ agentik/
 │   ├── pipeline.py          #   main pipeline orchestration
 │   ├── roadmap.py           #   ROADMAP.json parsing and helpers
 │   ├── state.py             #   progress tracking, budget accounting
-│   └── workspace.py         #   ecosystem detection, git operations
+│   ├── workspace.py         #   ecosystem detection, git operations
+│   ├── coverage.py          #   test coverage gating
+│   ├── diagnostics.py       #   structured failure reports
+│   ├── dryrun.py            #   dry-run cost / time estimation
+│   ├── graph_html.py        #   interactive HTML dependency graph
+│   ├── notify.py            #   webhook notification support
+│   ├── plan.py              #   ROADMAP generation from NL descriptions
+│   ├── review.py            #   human-in-the-loop review mode
+│   ├── rollback.py          #   git rollback on task failure
+│   └── web/                 #   web UI dashboard
+│       ├── app.py           #     FastAPI backend + REST API
+│       └── frontend/        #     React + Tailwind + shadcn SPA
 ├── helpers/
 │   └── check_roadmap.py     # ROADMAP structural validator
 ├── tests/                   # unit tests
@@ -345,6 +382,109 @@ it as-is (unknown values produce a warning, not an error).
 | Node      | `package.json`     | `vitest` / `jest` | `tsc --noEmit`             |
 | Go        | `go.mod`           | `go test`         | `go vet`                   |
 | Rust      | `Cargo.toml`       | `cargo test`      | `cargo clippy`             |
+
+## Web UI
+
+agentik includes an optional web dashboard built with React, Tailwind CSS, and
+shadcn/ui. It provides a browser-based interface to monitor and control the
+pipeline.
+
+### Prerequisites
+
+```bash
+pip install fastapi uvicorn[standard]
+```
+
+### Launch
+
+Select **Start web UI** from the agentik menu, or run directly:
+
+```bash
+python -c "from runner.web.app import start_server; start_server()"
+```
+
+The dashboard opens at `http://127.0.0.1:8420` with these tabs:
+
+| Tab        | Description                                                    |
+| ---------- | -------------------------------------------------------------- |
+| Overview   | Stats cards, progress bar, token usage chart, project info     |
+| Graph      | Mermaid.js dependency graph with colour-coded task status      |
+| Tasks      | Sortable task table with status badges, agents, and tokens     |
+| Logs       | Log tree per task with inline failure report display           |
+| Editor     | JSON editor for ROADMAP.json with save and validate buttons    |
+| Generate   | Describe a project → AI generates a valid ROADMAP.json         |
+| Review     | View git diff + approve/reject (human-in-the-loop)             |
+| Controls   | Run/stop pipeline, dry-run cost estimate with task breakdown   |
+
+Live updates are pushed over WebSocket — no polling needed.
+
+### Developing the frontend
+
+```bash
+cd runner/web/frontend
+npm install
+npm run dev          # Vite dev server with API proxy to :8420
+npm run build        # production build → runner/web/static/
+```
+
+## Human-in-the-loop review
+
+Enable review mode to pause after each build phase and inspect changes before
+committing. Add to your `ROADMAP.json`:
+
+```json
+{ "review": true }
+```
+
+Or enable per-task by adding `"review": true` to individual tasks. When
+enabled, the pipeline shows a diff and waits for you to approve or reject.
+
+## Test coverage gating
+
+Enforce minimum test coverage by adding to your `ROADMAP.json`:
+
+```json
+{ "min_coverage": 80 }
+```
+
+The pipeline runs tests with coverage collection after the standard test phase.
+If coverage falls below the threshold, the task is treated as failed and enters
+the fix cycle.
+
+## Webhook notifications
+
+Send events to any HTTP endpoint (Slack, Discord, custom). Add to your
+`ROADMAP.json`:
+
+```json
+{
+  "notify": {
+    "url": "https://hooks.slack.com/services/...",
+    "events": ["task_complete", "task_failed", "pipeline_done"]
+  }
+}
+```
+
+Events are sent as JSON POST requests. Notification failures are logged but
+never break the pipeline.
+
+## Dry-run mode
+
+Estimate cost and time without running anything:
+
+```bash
+python agentik.py   # select "Dry-run (estimate cost)"
+```
+
+Shows per-task token estimates, total USD cost, estimated wall-clock time, and a
+breakdown by pipeline phase.
+
+## Git rollback on failure
+
+When git is managed and a task exceeds `max_attempts_per_task`, the runner
+automatically hard-resets the feature branch to the last clean commit. This
+prevents broken code from accumulating on feature branches. Rollback only
+applies when `"git": {"enabled": true}` is set.
 
 ## Contributing
 

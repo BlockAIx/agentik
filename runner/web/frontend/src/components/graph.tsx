@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ProjectDetail } from "@/lib/api";
+import { useEffect, useRef } from "react";
 
 declare global {
   interface Window {

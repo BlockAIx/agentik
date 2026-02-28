@@ -1,43 +1,43 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import {
-  LayoutDashboard,
-  GitBranch,
-  ListChecks,
-  FileText,
-  FileCode2,
-  Sparkles,
-  Eye,
-  Settings2,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
-import { api } from "@/lib/api";
-import type { ProjectSummary, ProjectDetail, GlobalBudget } from "@/lib/api";
-import { useWebSocket } from "@/hooks/use-websocket";
-import { Overview } from "@/components/overview";
-import { Graph } from "@/components/graph";
-import { Tasks } from "@/components/tasks";
-import { Logs } from "@/components/logs";
-import { RoadmapEditor } from "@/components/roadmap-editor";
-import { Generator } from "@/components/generator";
-import { Review } from "@/components/review";
 import { Controls } from "@/components/controls";
+import { Generator } from "@/components/generator";
+import { Graph } from "@/components/graph";
+import { Logs } from "@/components/logs";
+import { Overview } from "@/components/overview";
+import { Review } from "@/components/review";
+import { RoadmapEditor } from "@/components/roadmap-editor";
+import { Tasks } from "@/components/tasks";
+import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useWebSocket } from "@/hooks/use-websocket";
+import type { GlobalBudget, ProjectDetail, ProjectSummary } from "@/lib/api";
+import { api } from "@/lib/api";
+import {
+    Eye,
+    FileCode2,
+    FileText,
+    GitBranch,
+    LayoutDashboard,
+    ListChecks,
+    Settings2,
+    Sparkles,
+    Wifi,
+    WifiOff,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function App(): React.JSX.Element {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);

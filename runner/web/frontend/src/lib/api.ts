@@ -1,106 +1,106 @@
 // API types matching the FastAPI backend responses.
 
 export interface ProjectSummary {
-  name: string;
-  path: string;
-  status: string;
-  detail: string;
-  tasks_total: number;
-  tasks_done: number;
-  total_tokens: number;
-  total_calls: number;
+  name: string
+  path: string
+  status: string
+  detail: string
+  tasks_total: number
+  tasks_done: number
+  total_tokens: number
+  total_calls: number
 }
 
 export interface TaskInfo {
-  id: number;
-  heading: string;
-  title: string;
-  status: "done" | "ready" | "blocked";
-  agent: string;
-  tokens: number;
-  deps: string[];
+  id: number
+  heading: string
+  title: string
+  status: "done" | "ready" | "blocked"
+  agent: string
+  tokens: number
+  deps: string[]
 }
 
 export interface LayerInfo {
-  index: number;
-  tasks: string[];
+  index: number
+  tasks: string[]
 }
 
 export interface BudgetSession {
-  task: string;
-  phase: string;
-  tokens: number;
-  timestamp: string;
+  task: string
+  phase: string
+  tokens: number
+  timestamp: string
 }
 
 export interface ProjectDetail {
-  name: string;
-  ecosystem: string;
-  preamble: string;
-  tasks: TaskInfo[];
-  layers: LayerInfo[];
+  name: string
+  ecosystem: string
+  preamble: string
+  tasks: TaskInfo[]
+  layers: LayerInfo[]
   budget: {
-    total_tokens: number;
-    total_calls: number;
-    sessions: BudgetSession[];
-  };
+    total_tokens: number
+    total_calls: number
+    sessions: BudgetSession[]
+  }
   state: {
-    current_task: string | null;
-    attempt: number;
-    completed: number;
-    total: number;
-    failed: Array<{ task: string; reason?: string }>;
-  };
-  review_enabled: boolean;
-  min_coverage: number | null;
-  notify: { url: string; events: string[] } | null;
+    current_task: string | null
+    attempt: number
+    completed: number
+    total: number
+    failed: Array<{ task: string; reason?: string }>
+  }
+  review_enabled: boolean
+  min_coverage: number | null
+  notify: { url: string; events: string[] } | null
 }
 
 export interface LogEntry {
-  task_slug: string;
-  logs: Array<{ name: string; path: string; size: number }>;
+  task_slug: string
+  logs: Array<{ name: string; path: string; size: number }>
   failure_report: {
-    task: string;
-    attempts: number;
-    last_error: string | null;
-    failing_test: string | null;
-    tokens_spent: number;
-    timestamp: string;
-  } | null;
+    task: string
+    attempts: number
+    last_error: string | null
+    failing_test: string | null
+    tokens_spent: number
+    timestamp: string
+  } | null
 }
 
 export interface GlobalBudget {
-  monthly_limit: number;
-  spent_tokens: number;
-  remaining_tokens: number;
-  max_attempts: number;
-  max_parallel: number;
+  monthly_limit: number
+  spent_tokens: number
+  remaining_tokens: number
+  max_attempts: number
+  max_parallel: number
 }
 
 export interface DryRunResult {
-  remaining_tasks: number;
-  total_tasks: number;
-  completed_tasks: number;
-  estimated_tokens: number;
-  estimated_usd: number;
-  estimated_time_sec: number;
+  remaining_tasks: number
+  total_tasks: number
+  completed_tasks: number
+  estimated_tokens: number
+  estimated_usd: number
+  estimated_time_sec: number
   task_breakdown: Array<{
-    task: string;
-    tokens: number;
-    usd: number;
-    type: string;
-  }>;
+    task: string
+    tokens: number
+    usd: number
+    type: string
+  }>
 }
 
-const BASE = "";
+const BASE = ""
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${url}`, init);
+  const res = await fetch(`${BASE}${url}`, init)
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text}`);
+    const text = await res.text()
+    throw new Error(`API ${res.status}: ${text}`)
   }
-  return res.json();
+  return res.json()
 }
 
 export const api = {
@@ -155,4 +155,4 @@ export const api = {
   getDryRun: (name: string) => fetchJson<DryRunResult>(`/api/projects/${name}/dryrun`),
 
   getGlobalBudget: () => fetchJson<GlobalBudget>("/api/budget"),
-};
+}
