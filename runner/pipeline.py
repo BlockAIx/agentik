@@ -88,19 +88,86 @@ def run_attempt(
     task_eco = get_task_ecosystem(task, project_dir)
     scaffold_ecosystem_configs(project_dir, task_eco)
 
-    _console.print("\n[bold][2/5] Test[/]")
+    _console.print("\n[bold][2/6] Test[/]")
     passed, output = run_tests(project_dir)
+
+    # Coverage gating: if tests pass, check coverage threshold.
+    if passed:
+        from runner.coverage import get_min_coverage, run_tests_with_coverage, check_coverage_gate  # noqa: PLC0415
+
+        threshold = get_min_coverage(project_dir)
+        if threshold is not None:
+            _console.print("[dim]  Checking test coverage...[/]")
+            _, cov_output, coverage_pct = run_tests_with_coverage(project_dir)
+            cov_ok, cov_msg = check_coverage_gate(project_dir, coverage_pct)
+            if coverage_pct is not None:
+                _console.print(f"  [dim]Coverage: {coverage_pct:.0f}% (threshold: {threshold}%)[/]")
+            if not cov_ok:
+                _console.print(f"  [yellow]{cov_msg}[/]")
+                return False, f"Coverage below threshold.\n{cov_msg}\n{cov_output}"
+
     return passed, (None if passed else output)
 
 
 _STATIC_FIX_MAX_ATTEMPTS = 2
 
 
+def _handle_task_failure(task: str, project_dir: Path, fix_logs: str | None = None) -> None:
+    """Handle a task that has exhausted all retry attempts.
+
+    1. Save a structured failure report (diagnostics).
+    2. Rollback the git feature branch.
+    3. Mark the task as failed in runner state.
+    4. Send a webhook notification if configured.
+    """
+    from runner.diagnostics import save_failure_report  # noqa: PLC0415
+    from runner.rollback import rollback_feature_branch, mark_task_failed  # noqa: PLC0415
+
+    # Collect tokens spent on this task from budget.
+    budget = load_project_budget(project_dir)
+    tokens_spent = sum(
+        s.get("tokens", 0) for s in budget.get("sessions", []) if s.get("task") == task
+    )
+
+    # Save failure report.
+    save_failure_report(
+        task,
+        project_dir,
+        attempts=MAX_ATTEMPTS,
+        tokens_spent=tokens_spent,
+        fix_logs=fix_logs,
+    )
+
+    # Rollback git changes.
+    rollback_feature_branch(task, project_dir)
+
+    # Mark as failed (not done).
+    mark_task_failed(task, project_dir, {
+        "attempts": MAX_ATTEMPTS,
+        "tokens_spent": tokens_spent,
+    })
+
+    # Send notification.
+    try:
+        from runner.notify import send_notification  # noqa: PLC0415
+        send_notification(
+            project_dir,
+            "task_failed",
+            task=task,
+            status="failed",
+            details={"attempts": MAX_ATTEMPTS, "tokens_spent": tokens_spent},
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    _console.print(f"\n[red bold]✗ Failed:[/] {task} (after {MAX_ATTEMPTS} attempts)")
+
+
 def finalise_task(
     task: str, project_dir: Path, task_outputs: list[str] | None = None
 ) -> None:
-    """Static-check, document, commit, merge, and tag a successfully tested task."""
-    _console.print("\n[bold][3/5] Static checks[/]")
+    """Static-check, document, review (optional), commit, merge, and tag a successfully tested task."""
+    _console.print("\n[bold][3/6] Static checks[/]")
     for _attempt in range(_STATIC_FIX_MAX_ATTEMPTS):
         ok, check_output = run_static_checks(project_dir)
         if ok:
@@ -115,13 +182,35 @@ def finalise_task(
             "[yellow]⚠ Static analysis still failing after max attempts — proceeding.[/]"
         )
 
-    _console.print("\n[bold][4/5] Document[/]")
+    _console.print("\n[bold][4/6] Document[/]")
     run_opencode_document(task, project_dir)
 
-    _console.print("\n[bold][5/5] Commit & merge[/]")
+    # ── Human-in-the-loop review (opt-in) ──────────────────────────────
+    from runner.review import is_review_enabled, show_diff_and_ask, discard_changes  # noqa: PLC0415
+
+    if is_review_enabled(task, project_dir):
+        _console.print("\n[bold][5/6] Human Review[/]")
+        decision = show_diff_and_ask(project_dir)
+        if decision == "reject":
+            discard_changes(project_dir)
+            _console.print("[yellow]Task rejected by reviewer — changes discarded.[/]")
+            return
+        _console.print("[green]Review approved.[/]")
+    else:
+        _console.print("\n[dim][5/6] Review — skipped (not enabled)[/]")
+
+    _console.print("\n[bold][6/6] Commit & merge[/]")
     mark_done(task, project_dir)
     commit_and_merge(task, project_dir, task_outputs=task_outputs)
     try_deploy_hook(task, project_dir)
+
+    # Send success notification.
+    try:
+        from runner.notify import send_notification  # noqa: PLC0415
+        send_notification(project_dir, "task_complete", task=task, status="ok")
+    except Exception:  # noqa: BLE001
+        pass
+
     _console.print(f"\n[green bold]✔ Completed:[/] {task}")
 
 
@@ -182,8 +271,9 @@ def process_task(
 
         _console.print(f"  [yellow]Tests failed on attempt {attempt + 1}.[/]")
         if attempt == MAX_ATTEMPTS - 1:
-            _console.print("[red]Max attempts reached. Stopping.[/]")
-            sys.exit(1)
+            _console.print("[red]Max attempts reached.[/]")
+            _handle_task_failure(task, project_dir, fix_logs)
+            return
 
 
 # ── Milestone pipeline ─────────────────────────────────────────────────────────
@@ -304,8 +394,10 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
                 break
             fix_logs = output
         else:
-            _console.print("[red]Max fix attempts reached for batch. Stopping.[/]")
-            sys.exit(1)
+            _console.print("[red]Max fix attempts reached for batch.[/]")
+            for t in batch:
+                _handle_task_failure(t, project_dir, fix_logs)
+            return
 
     # ── 3/4 Static checks (once for the whole batch) ─────────────────────
     _console.print("\n[bold][3/4] Static checks[/]  [dim](batch)[/]")
@@ -378,7 +470,11 @@ def main() -> None:
                 title="▶  Run pipeline (verbose) (stream full agent output)",
                 value="build:verbose",
             ),
-            questionary.Choice(title="🔍 Show dependency graph", value="graph"),
+            questionary.Choice(title="🔍 Show dependency graph (terminal)", value="graph"),
+            questionary.Choice(title="🌐 Show dependency graph (HTML)", value="graph:html"),
+            questionary.Choice(title="📊 Dry run — estimate cost & time", value="dryrun"),
+            questionary.Choice(title="📝 Generate ROADMAP from description", value="plan"),
+            questionary.Choice(title="🌐 Launch Web UI", value="webui"),
             questionary.Choice(
                 title=(
                     "🔄 Regenerate project AGENTS.md"
@@ -398,6 +494,32 @@ def main() -> None:
         from runner.roadmap import print_dependency_graph  # noqa: PLC0415
 
         print_dependency_graph(project_dir)
+        return
+
+    if mode == "graph:html":
+        from runner.graph_html import generate_graph_html  # noqa: PLC0415
+
+        generate_graph_html(project_dir)
+        return
+
+    if mode == "dryrun":
+        from runner.dryrun import dry_run  # noqa: PLC0415
+
+        dry_run(project_dir)
+        return
+
+    if mode == "plan":
+        from runner.plan import generate_roadmap_interactive  # noqa: PLC0415
+
+        generate_roadmap_interactive(project_dir.name)
+        return
+
+    if mode == "webui":
+        try:
+            from runner.web.app import start_server  # noqa: PLC0415
+            start_server()
+        except ImportError as e:
+            _console.print(f"[red]{e}[/]")
         return
 
     if mode == "agents":
@@ -473,3 +595,19 @@ def main() -> None:
         # Multiple independent tasks → parallel build.
         batch = buildable[:MAX_PARALLEL_AGENTS]
         process_parallel_batch(batch, project_dir)
+
+    # ── Pipeline complete ──────────────────────────────────────────────────
+    done_set = {t for t in all_tasks if task_done(t, project_dir)}
+    _console.print(
+        f"\n[green bold]Pipeline complete:[/] {len(done_set)}/{len(all_tasks)} tasks done."
+    )
+    try:
+        from runner.notify import send_notification  # noqa: PLC0415
+        send_notification(
+            project_dir,
+            "pipeline_done",
+            status="ok",
+            details={"completed": len(done_set), "total": len(all_tasks)},
+        )
+    except Exception:  # noqa: BLE001
+        pass
