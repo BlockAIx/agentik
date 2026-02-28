@@ -245,6 +245,8 @@ def _raw_state(project_dir: Path) -> dict:
         "task_started_at": data.get("task_started_at"),
         # Per-task elapsed seconds for completed tasks; used to compute ETA.
         "task_durations": data.get("task_durations", []),
+        # Tasks that failed after max attempts (populated by rollback module).
+        "failed": data.get("failed", []),
     }
 
 
