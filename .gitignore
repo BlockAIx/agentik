@@ -12,4 +12,8 @@ __pycache__/
 # repo: no project source files, no project .git objects, no budget.json.
 projects/
 
+# Frontend build artifacts and dependencies
+runner/web/static/
+runner/web/frontend/node_modules/
+
 .vscode/

@@ -1,8 +1,8 @@
 """notify.py — Webhook/notification support for pipeline events."""
 
 import json
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 from runner.config import _console
@@ -94,9 +94,7 @@ def _post_webhook(url: str, payload: dict) -> None:
             if resp.status < 300:
                 _console.print(f"[dim][notify] Webhook sent: {payload.get('event')}[/]")
             else:
-                _console.print(
-                    f"[yellow][notify] Webhook returned {resp.status}[/]"
-                )
+                _console.print(f"[yellow][notify] Webhook returned {resp.status}[/]")
     except (urllib.error.URLError, OSError) as exc:
         _console.print(f"[yellow][notify] Webhook failed: {exc}[/]")
     except Exception as exc:  # noqa: BLE001

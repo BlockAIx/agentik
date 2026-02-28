@@ -9,7 +9,6 @@ import questionary
 
 from runner.config import PROJECTS_ROOT, ROADMAP_FILENAME, _console
 
-
 _ROADMAP_GENERATION_PROMPT = """\
 You are an expert software architect. The user will describe a project in plain language.
 Your job is to generate a valid ROADMAP.json for the agentik runner.
@@ -66,7 +65,9 @@ def generate_roadmap_interactive(project_name: str | None = None) -> Path | None
         Path to the created ROADMAP.json, or None if cancelled.
     """
     _console.print("\n[bold]ROADMAP Generator[/]")
-    _console.print("[dim]Describe your project in plain language and the AI will generate a ROADMAP.[/]\n")
+    _console.print(
+        "[dim]Describe your project in plain language and the AI will generate a ROADMAP.[/]\n"
+    )
 
     # Get project name.
     if not project_name:
@@ -94,7 +95,9 @@ def generate_roadmap_interactive(project_name: str | None = None) -> Path | None
     if not ecosystem:
         return None
 
-    full_description = f"Project: {project_name}\nEcosystem: {ecosystem}\n\n{description}"
+    full_description = (
+        f"Project: {project_name}\nEcosystem: {ecosystem}\n\n{description}"
+    )
 
     _console.print("\n[dim]Generating ROADMAP with AI architect...[/]")
 
@@ -150,7 +153,9 @@ def generate_roadmap_interactive(project_name: str | None = None) -> Path | None
 
     rc = run_checks(roadmap_path)
     if rc != 0:
-        _console.print("[yellow]⚠ ROADMAP has validation warnings/errors. You may need to fix them.[/]")
+        _console.print(
+            "[yellow]⚠ ROADMAP has validation warnings/errors. You may need to fix them.[/]"
+        )
     else:
         _console.print("[green]✔ ROADMAP validation passed.[/]")
 
@@ -220,7 +225,7 @@ def _extract_json(text: str) -> str | None:
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
-        candidate = text[start:end + 1]
+        candidate = text[start : end + 1]
         try:
             json.loads(candidate)
             return candidate

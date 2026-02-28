@@ -5,11 +5,13 @@ import json
 import re
 import subprocess
 import threading
+from pathlib import Path
 
 try:
-    from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
-    from fastapi.responses import HTMLResponse
     import uvicorn
+    from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+    from fastapi.responses import FileResponse, HTMLResponse
+    from fastapi.staticfiles import StaticFiles
 except ImportError:
     raise ImportError(
         "Web UI requires fastapi and uvicorn. Install with:\n"
@@ -35,6 +37,7 @@ _pipeline_thread: threading.Thread | None = None
 
 
 # ── Broadcast helper ───────────────────────────────────────────────────────────
+
 
 async def _broadcast(event: str, data: dict) -> None:
     """Send a JSON event to all connected WebSocket clients."""
@@ -63,12 +66,18 @@ def broadcast_sync(event: str, data: dict) -> None:
 
 # ── API Routes ─────────────────────────────────────────────────────────────────
 
+
 @app.get("/api/projects")
 def list_projects() -> list[dict]:
     """List all projects with status info."""
-    from runner.workspace import list_projects as _list, _project_status  # noqa: PLC0415
     from runner.roadmap import get_tasks  # noqa: PLC0415
-    from runner.state import load_project_budget, _raw_state, _completed_tasks  # noqa: PLC0415
+    from runner.state import (  # noqa: PLC0415
+        _completed_tasks,
+        _raw_state,
+        load_project_budget,
+    )
+    from runner.workspace import _project_status
+    from runner.workspace import list_projects as _list  # noqa: PLC0415
 
     projects = _list()
     result = []
@@ -78,16 +87,18 @@ def list_projects() -> list[dict]:
         state = _raw_state(proj)
         done_set = _completed_tasks(state)
         budget = load_project_budget(proj)
-        result.append({
-            "name": proj.name,
-            "path": str(proj),
-            "status": badge,
-            "detail": detail,
-            "tasks_total": len(all_tasks),
-            "tasks_done": len(done_set),
-            "total_tokens": budget.get("total_tokens", 0),
-            "total_calls": budget.get("total_calls", 0),
-        })
+        result.append(
+            {
+                "name": proj.name,
+                "path": str(proj),
+                "status": badge,
+                "detail": detail,
+                "tasks_total": len(all_tasks),
+                "tasks_done": len(done_set),
+                "total_tokens": budget.get("total_tokens", 0),
+                "total_calls": budget.get("total_calls", 0),
+            }
+        )
     return result
 
 
@@ -98,8 +109,18 @@ def get_project(name: str) -> dict:
     if not project_dir.exists():
         raise HTTPException(404, f"Project '{name}' not found")
 
-    from runner.roadmap import _load_roadmap, get_tasks, parse_task_graph, get_task_layers, get_task_agent  # noqa: PLC0415
-    from runner.state import load_project_budget, _raw_state, _completed_tasks  # noqa: PLC0415
+    from runner.roadmap import (  # noqa: PLC0415
+        _load_roadmap,
+        get_task_agent,
+        get_task_layers,
+        get_tasks,
+        parse_task_graph,
+    )
+    from runner.state import (  # noqa: PLC0415
+        _completed_tasks,
+        _raw_state,
+        load_project_budget,
+    )
 
     roadmap = _load_roadmap(project_dir)
     all_tasks = get_tasks(project_dir)
@@ -121,27 +142,39 @@ def get_project(name: str) -> dict:
         task_id = int(m.group(1)) if m else 0
         deps = graph.get(task, [])
         all_deps_done = all(d in done_set for d in deps)
-        status = "done" if task in done_set else ("ready" if all_deps_done else "blocked")
+        status = (
+            "done" if task in done_set else ("ready" if all_deps_done else "blocked")
+        )
         agent = get_task_agent(task, project_dir)
         tokens = task_tokens.get(task, 0)
 
-        tasks_info.append({
-            "id": task_id,
-            "heading": task,
-            "title": m.group(2) if m else task,
-            "status": status,
-            "agent": agent,
-            "tokens": tokens,
-            "deps": [(dm.group(1) if (dm := re.match(r"^## (\d{3})", d)) else d) for d in deps],
-        })
+        tasks_info.append(
+            {
+                "id": task_id,
+                "heading": task,
+                "title": m.group(2) if m else task,
+                "status": status,
+                "agent": agent,
+                "tokens": tokens,
+                "deps": [
+                    (dm.group(1) if (dm := re.match(r"^## (\d{3})", d)) else d)
+                    for d in deps
+                ],
+            }
+        )
 
     # Layer info.
     layer_info = []
     for i, layer in enumerate(layers):
-        layer_info.append({
-            "index": i,
-            "tasks": [(tm.group(1) if (tm := re.match(r"^## (\d{3})", t)) else t) for t in layer],
-        })
+        layer_info.append(
+            {
+                "index": i,
+                "tasks": [
+                    (tm.group(1) if (tm := re.match(r"^## (\d{3})", t)) else t)
+                    for t in layer
+                ],
+            }
+        )
 
     return {
         "name": roadmap.get("name", name),
@@ -188,6 +221,7 @@ async def update_roadmap(name: str, request: Request) -> dict:
 
     # Validate.
     from helpers.check_roadmap import run_checks  # noqa: PLC0415
+
     rc = run_checks(roadmap_path)
     return {"saved": True, "valid": rc == 0}
 
@@ -205,11 +239,13 @@ def get_logs(name: str) -> list[dict]:
         if task_dir.is_dir():
             logs = []
             for log_file in sorted(task_dir.glob("*.log")):
-                logs.append({
-                    "name": log_file.name,
-                    "path": log_file.relative_to(project_dir).as_posix(),
-                    "size": log_file.stat().st_size,
-                })
+                logs.append(
+                    {
+                        "name": log_file.name,
+                        "path": log_file.relative_to(project_dir).as_posix(),
+                        "size": log_file.stat().st_size,
+                    }
+                )
             # Include failure report if present.
             report = task_dir / "failure_report.json"
             failure = None
@@ -218,11 +254,13 @@ def get_logs(name: str) -> list[dict]:
                     failure = json.loads(report.read_text(encoding="utf-8"))
                 except Exception:
                     pass
-            result.append({
-                "task_slug": task_dir.name,
-                "logs": logs,
-                "failure_report": failure,
-            })
+            result.append(
+                {
+                    "task_slug": task_dir.name,
+                    "logs": logs,
+                    "failure_report": failure,
+                }
+            )
     return result
 
 
@@ -245,6 +283,7 @@ def validate_roadmap(name: str) -> dict:
     if not roadmap_path.exists():
         raise HTTPException(404, "ROADMAP.json not found")
     from helpers.check_roadmap import run_checks  # noqa: PLC0415
+
     rc = run_checks(roadmap_path)
     return {"valid": rc == 0}
 
@@ -325,13 +364,19 @@ def get_diff(name: str) -> dict:
     project_dir = PROJECTS_ROOT / name
     result = subprocess.run(
         f'git -C "{project_dir}" diff',
-        shell=True, capture_output=True, text=True,
-        encoding="utf-8", errors="replace",
+        shell=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     status = subprocess.run(
         f'git -C "{project_dir}" status --short',
-        shell=True, capture_output=True, text=True,
-        encoding="utf-8", errors="replace",
+        shell=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     return {
         "diff": result.stdout,
@@ -346,18 +391,27 @@ def api_dry_run(name: str) -> dict:
     if not project_dir.exists():
         raise HTTPException(404, f"Project '{name}' not found")
     from runner.dryrun import dry_run  # noqa: PLC0415
+
     return dry_run(project_dir)
 
 
 @app.get("/api/budget")
 def get_global_budget() -> dict:
     """Get global budget status."""
-    from runner.state import get_token_stats, _load_budget_state, _month_key  # noqa: PLC0415
+    from runner.state import (  # noqa: PLC0415
+        _load_budget_state,
+        _month_key,
+        get_token_stats,
+    )
 
     stats = get_token_stats()
     state = _load_budget_state()
     month = _month_key()
-    baseline = state.get("baseline_stats", {k: 0 for k in stats}) if state.get("month") == month else {k: 0 for k in stats}
+    baseline = (
+        state.get("baseline_stats", {k: 0 for k in stats})
+        if state.get("month") == month
+        else {k: 0 for k in stats}
+    )
     spent = {k: max(0, stats[k] - baseline.get(k, 0)) for k in stats}
     return {
         "monthly_limit": MONTHLY_LIMIT_TOKENS,
@@ -369,6 +423,7 @@ def get_global_budget() -> dict:
 
 
 # ── WebSocket ──────────────────────────────────────────────────────────────────
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
@@ -386,12 +441,43 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             _ws_clients.remove(websocket)
 
 
-# ── Dashboard HTML ─────────────────────────────────────────────────────────────
+# ── Static frontend ───────────────────────────────────────────────────────────
+
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+@app.on_event("startup")
+def _mount_static() -> None:
+    """Mount the React build output if it exists."""
+    if _STATIC_DIR.is_dir():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=str(_STATIC_DIR / "assets")),
+            name="frontend-assets",
+        )
+
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard() -> str:
-    """Serve the main dashboard HTML."""
-    return _DASHBOARD_HTML
+def dashboard() -> HTMLResponse:
+    """Serve the React SPA index.html, falling back to inline HTML."""
+    index = _STATIC_DIR / "index.html"
+    if index.is_file():
+        return HTMLResponse(index.read_text(encoding="utf-8"))
+    return HTMLResponse(_FALLBACK_HTML)
+
+
+@app.get("/{path:path}")
+def spa_fallback(path: str) -> HTMLResponse | FileResponse:
+    """SPA catch-all: serve static files or fall back to index.html."""
+    # Try exact static file first.
+    candidate = _STATIC_DIR / path
+    if candidate.is_file() and _STATIC_DIR in candidate.resolve().parents:
+        return FileResponse(str(candidate))
+    # Fall back to SPA index.
+    index = _STATIC_DIR / "index.html"
+    if index.is_file():
+        return HTMLResponse(index.read_text(encoding="utf-8"))
+    return HTMLResponse(_FALLBACK_HTML)
 
 
 def start_server(host: str = "127.0.0.1", port: int = 8420) -> None:
@@ -401,9 +487,9 @@ def start_server(host: str = "127.0.0.1", port: int = 8420) -> None:
     uvicorn.run(app, host=host, port=port, log_level="warning")
 
 
-# ── Inline HTML dashboard ─────────────────────────────────────────────────────
+# ── Fallback inline HTML (shown when React build is not present) ───────────────
 
-_DASHBOARD_HTML = """\
+_FALLBACK_HTML = """\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1005,4 +1091,3 @@ init();
 </body>
 </html>
 """
-

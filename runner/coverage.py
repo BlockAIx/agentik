@@ -69,6 +69,7 @@ def _parse_coverage_total(output: str) -> float | None:
 def _run_generic_tests(project_dir: Path) -> tuple[bool, str, float | None]:
     """Fallback: run tests without coverage for unsupported ecosystems."""
     from runner.roadmap import run_tests  # noqa: PLC0415
+
     passed, output = run_tests(project_dir)
     return passed, output, None
 

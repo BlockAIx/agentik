@@ -59,7 +59,9 @@ def rollback_feature_branch(task: str, project_dir: Path) -> bool:
     return True
 
 
-def mark_task_failed(task: str, project_dir: Path, error_info: dict | None = None) -> None:
+def mark_task_failed(
+    task: str, project_dir: Path, error_info: dict | None = None
+) -> None:
     """Mark a task as failed in runner state (not done) so next run can retry or skip."""
     from runner.state import _raw_state, _write_state  # noqa: PLC0415
 

@@ -93,7 +93,11 @@ def run_attempt(
 
     # Coverage gating: if tests pass, check coverage threshold.
     if passed:
-        from runner.coverage import get_min_coverage, run_tests_with_coverage, check_coverage_gate  # noqa: PLC0415
+        from runner.coverage import (  # noqa: PLC0415
+            check_coverage_gate,
+            get_min_coverage,
+            run_tests_with_coverage,
+        )
 
         threshold = get_min_coverage(project_dir)
         if threshold is not None:
@@ -101,7 +105,9 @@ def run_attempt(
             _, cov_output, coverage_pct = run_tests_with_coverage(project_dir)
             cov_ok, cov_msg = check_coverage_gate(project_dir, coverage_pct)
             if coverage_pct is not None:
-                _console.print(f"  [dim]Coverage: {coverage_pct:.0f}% (threshold: {threshold}%)[/]")
+                _console.print(
+                    f"  [dim]Coverage: {coverage_pct:.0f}% (threshold: {threshold}%)[/]"
+                )
             if not cov_ok:
                 _console.print(f"  [yellow]{cov_msg}[/]")
                 return False, f"Coverage below threshold.\n{cov_msg}\n{cov_output}"
@@ -112,7 +118,9 @@ def run_attempt(
 _STATIC_FIX_MAX_ATTEMPTS = 2
 
 
-def _handle_task_failure(task: str, project_dir: Path, fix_logs: str | None = None) -> None:
+def _handle_task_failure(
+    task: str, project_dir: Path, fix_logs: str | None = None
+) -> None:
     """Handle a task that has exhausted all retry attempts.
 
     1. Save a structured failure report (diagnostics).
@@ -121,7 +129,10 @@ def _handle_task_failure(task: str, project_dir: Path, fix_logs: str | None = No
     4. Send a webhook notification if configured.
     """
     from runner.diagnostics import save_failure_report  # noqa: PLC0415
-    from runner.rollback import rollback_feature_branch, mark_task_failed  # noqa: PLC0415
+    from runner.rollback import (  # noqa: PLC0415
+        mark_task_failed,
+        rollback_feature_branch,
+    )
 
     # Collect tokens spent on this task from budget.
     budget = load_project_budget(project_dir)
@@ -142,14 +153,19 @@ def _handle_task_failure(task: str, project_dir: Path, fix_logs: str | None = No
     rollback_feature_branch(task, project_dir)
 
     # Mark as failed (not done).
-    mark_task_failed(task, project_dir, {
-        "attempts": MAX_ATTEMPTS,
-        "tokens_spent": tokens_spent,
-    })
+    mark_task_failed(
+        task,
+        project_dir,
+        {
+            "attempts": MAX_ATTEMPTS,
+            "tokens_spent": tokens_spent,
+        },
+    )
 
     # Send notification.
     try:
         from runner.notify import send_notification  # noqa: PLC0415
+
         send_notification(
             project_dir,
             "task_failed",
@@ -186,7 +202,11 @@ def finalise_task(
     run_opencode_document(task, project_dir)
 
     # ── Human-in-the-loop review (opt-in) ──────────────────────────────
-    from runner.review import is_review_enabled, show_diff_and_ask, discard_changes  # noqa: PLC0415
+    from runner.review import (  # noqa: PLC0415
+        discard_changes,
+        is_review_enabled,
+        show_diff_and_ask,
+    )
 
     if is_review_enabled(task, project_dir):
         _console.print("\n[bold][5/6] Human Review[/]")
@@ -207,6 +227,7 @@ def finalise_task(
     # Send success notification.
     try:
         from runner.notify import send_notification  # noqa: PLC0415
+
         send_notification(project_dir, "task_complete", task=task, status="ok")
     except Exception:  # noqa: BLE001
         pass
@@ -470,10 +491,18 @@ def main() -> None:
                 title="▶  Run pipeline (verbose) (stream full agent output)",
                 value="build:verbose",
             ),
-            questionary.Choice(title="🔍 Show dependency graph (terminal)", value="graph"),
-            questionary.Choice(title="🌐 Show dependency graph (HTML)", value="graph:html"),
-            questionary.Choice(title="📊 Dry run — estimate cost & time", value="dryrun"),
-            questionary.Choice(title="📝 Generate ROADMAP from description", value="plan"),
+            questionary.Choice(
+                title="🔍 Show dependency graph (terminal)", value="graph"
+            ),
+            questionary.Choice(
+                title="🌐 Show dependency graph (HTML)", value="graph:html"
+            ),
+            questionary.Choice(
+                title="📊 Dry run — estimate cost & time", value="dryrun"
+            ),
+            questionary.Choice(
+                title="📝 Generate ROADMAP from description", value="plan"
+            ),
             questionary.Choice(title="🌐 Launch Web UI", value="webui"),
             questionary.Choice(
                 title=(
@@ -517,6 +546,7 @@ def main() -> None:
     if mode == "webui":
         try:
             from runner.web.app import start_server  # noqa: PLC0415
+
             start_server()
         except ImportError as e:
             _console.print(f"[red]{e}[/]")
@@ -603,6 +633,7 @@ def main() -> None:
     )
     try:
         from runner.notify import send_notification  # noqa: PLC0415
+
         send_notification(
             project_dir,
             "pipeline_done",

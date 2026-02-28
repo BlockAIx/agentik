@@ -9,8 +9,7 @@ from runner.roadmap import (
     is_milestone_task,
     parse_task_graph,
 )
-from runner.state import _format_tokens, _raw_state, _completed_tasks, _format_duration
-
+from runner.state import _completed_tasks, _format_duration, _format_tokens, _raw_state
 
 # Rough token estimates per phase (based on typical runs).
 _ESTIMATED_TOKENS_PER_PHASE = {
@@ -50,7 +49,9 @@ def estimate_task_tokens(task: str, project_dir: Path) -> int:
                 return _ESTIMATED_TOKENS_PER_PHASE["milestone"]
             return base + overhead
 
-    return _ESTIMATED_TOKENS_PER_PHASE["build"] + _ESTIMATED_TOKENS_PER_PHASE["document"]
+    return (
+        _ESTIMATED_TOKENS_PER_PHASE["build"] + _ESTIMATED_TOKENS_PER_PHASE["document"]
+    )
 
 
 def _tokens_to_usd(tokens: int) -> float:
@@ -59,8 +60,7 @@ def _tokens_to_usd(tokens: int) -> float:
     input_tokens = int(tokens * 0.7)
     output_tokens = int(tokens * 0.3)
     cost = (
-        input_tokens * _PRICES["input"]
-        + output_tokens * _PRICES["output"]
+        input_tokens * _PRICES["input"] + output_tokens * _PRICES["output"]
     ) / 1_000_000
     return round(cost, 4)
 
@@ -72,6 +72,7 @@ def dry_run(project_dir: Path) -> dict:
         Summary dict with task breakdown, totals, and estimated cost.
     """
     from rich.table import Table  # noqa: PLC0415
+
     from runner.config import rbox  # noqa: PLC0415
 
     all_tasks = get_tasks(project_dir)
@@ -82,9 +83,7 @@ def dry_run(project_dir: Path) -> dict:
 
     # Compute average seconds per task.
     avg_sec = (
-        sum(durations) / len(durations)
-        if durations
-        else _DEFAULT_SECONDS_PER_TASK
+        sum(durations) / len(durations) if durations else _DEFAULT_SECONDS_PER_TASK
     )
 
     remaining = [t for t in all_tasks if t not in done_set]
@@ -97,12 +96,14 @@ def dry_run(project_dir: Path) -> dict:
         est_tokens = estimate_task_tokens(task, project_dir)
         est_usd = _tokens_to_usd(est_tokens)
         is_ms = is_milestone_task(task, project_dir)
-        task_estimates.append({
-            "task": task.lstrip("# ").strip(),
-            "tokens": est_tokens,
-            "usd": est_usd,
-            "type": "milestone" if is_ms else "build",
-        })
+        task_estimates.append(
+            {
+                "task": task.lstrip("# ").strip(),
+                "tokens": est_tokens,
+                "usd": est_usd,
+                "type": "milestone" if is_ms else "build",
+            }
+        )
         total_tokens += est_tokens
 
     total_usd = _tokens_to_usd(total_tokens)
@@ -129,7 +130,12 @@ def dry_run(project_dir: Path) -> dict:
     _console.rule("[bold]Dry Run — Cost & Time Estimate[/]", style="blue")
     _console.print()
 
-    t = Table(box=rbox.ROUNDED, border_style="bright_black", title="[bold]Task Breakdown[/]", title_style="")
+    t = Table(
+        box=rbox.ROUNDED,
+        border_style="bright_black",
+        title="[bold]Task Breakdown[/]",
+        title_style="",
+    )
     t.add_column("Task", style="dim", no_wrap=False)
     t.add_column("Type", style="cyan", no_wrap=True)
     t.add_column("Est. Tokens", justify="right")
@@ -147,7 +153,9 @@ def dry_run(project_dir: Path) -> dict:
 
     _console.print()
     _console.print("[bold]Summary:[/]")
-    _console.print(f"  Tasks remaining:    [bold]{len(remaining)}[/] / {len(all_tasks)}")
+    _console.print(
+        f"  Tasks remaining:    [bold]{len(remaining)}[/] / {len(all_tasks)}"
+    )
     _console.print(f"  Completed:          [green]{len(done_set)}[/]")
     _console.print(f"  Est. total tokens:  [bold]{_format_tokens(total_tokens)}[/]")
     _console.print(f"  Est. total cost:    [bold]${total_usd:.4f}[/]")

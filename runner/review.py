@@ -56,8 +56,13 @@ def show_diff_and_ask(project_dir: Path) -> str:
         "Review decision:",
         choices=[
             questionary.Choice(title="✔ Approve — continue to commit", value="approve"),
-            questionary.Choice(title="✗ Reject  — discard changes and retry", value="reject"),
-            questionary.Choice(title="✎ Edit    — open a shell to make manual edits, then re-review", value="edit"),
+            questionary.Choice(
+                title="✗ Reject  — discard changes and retry", value="reject"
+            ),
+            questionary.Choice(
+                title="✎ Edit    — open a shell to make manual edits, then re-review",
+                value="edit",
+            ),
         ],
         use_shortcuts=False,
     ).ask()
@@ -66,9 +71,12 @@ def show_diff_and_ask(project_dir: Path) -> str:
         return "reject"
 
     if choice == "edit":
-        _console.print("[yellow]Opening a shell in the project directory. Type 'exit' when done.[/]")
+        _console.print(
+            "[yellow]Opening a shell in the project directory. Type 'exit' when done.[/]"
+        )
         _console.print(f"[dim]  cd {project_dir}[/]")
         import platform  # noqa: PLC0415
+
         shell = "powershell" if platform.system() == "Windows" else "bash"
         subprocess.run(shell, cwd=str(project_dir))
         # Re-show diff and re-ask after editing.
@@ -118,7 +126,9 @@ def _get_git_diff(project_dir: Path) -> str:
     if full_diff:
         # Truncate very large diffs.
         if len(full_diff) > 8000:
-            full_diff = full_diff[:8000] + "\n... (truncated, full diff available via git)"
+            full_diff = (
+                full_diff[:8000] + "\n... (truncated, full diff available via git)"
+            )
         parts.append(f"\n[Full diff]\n{full_diff}")
     return "\n".join(parts)
 
