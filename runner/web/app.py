@@ -2,23 +2,15 @@
 
 import asyncio
 import json
-import mimetypes
 import re
 import subprocess
 import threading
 from pathlib import Path
 
-# Fix MIME types on Windows — the registry often maps .js to text/plain,
-# which causes browsers to reject module scripts.
-mimetypes.add_type("application/javascript", ".js")
-mimetypes.add_type("text/css", ".css")
-mimetypes.add_type("text/html", ".html")
-
 try:
     import uvicorn
     from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-    from fastapi.responses import HTMLResponse
-    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import HTMLResponse, Response
 except ImportError:
     raise ImportError(
         "Web UI requires fastapi and uvicorn. Install with:\n"
@@ -467,26 +459,43 @@ def _read_index() -> str:
     )
 
 
+# Hardcoded MIME map — bypasses Python's mimetypes module which reads from
+# the Windows registry and often maps .js to text/plain.
+_MIME_MAP: dict[str, str] = {
+    ".js": "application/javascript",
+    ".css": "text/css",
+    ".html": "text/html",
+    ".json": "application/json",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
+    ".woff": "font/woff",
+    ".ttf": "font/ttf",
+    ".map": "application/json",
+    ".wasm": "application/wasm",
+}
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard() -> HTMLResponse:
     """Serve the React SPA index.html."""
     return HTMLResponse(_read_index())
 
 
-# Mount static assets with correct MIME types.  Mounts are checked by
-# Starlette *after* explicit routes, so no catch-all route should exist
-# that would shadow these paths.
-if _ASSETS_DIR.is_dir():
-    app.mount(
-        "/assets",
-        StaticFiles(directory=str(_ASSETS_DIR)),
-        name="frontend-assets",
-    )
+@app.get("/assets/{path:path}")
+def serve_asset(path: str) -> Response:
+    """Serve static assets with explicit MIME types."""
+    file_path = (_ASSETS_DIR / path).resolve()
+    if not file_path.is_file() or not str(file_path).startswith(str(_ASSETS_DIR.resolve())):
+        raise HTTPException(status_code=404, detail="Asset not found")
+    media_type = _MIME_MAP.get(file_path.suffix.lower(), "application/octet-stream")
+    return Response(content=file_path.read_bytes(), media_type=media_type)
 
 
 # SPA fallback: return index.html for any unmatched GET request (client-side
-# routing).  Using an exception handler instead of a catch-all route avoids
-# shadowing the /assets StaticFiles mount.
+# routing).
 from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
 
 
