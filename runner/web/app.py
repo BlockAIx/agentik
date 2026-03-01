@@ -10,7 +10,7 @@ from pathlib import Path
 try:
     import uvicorn
     from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-    from fastapi.responses import FileResponse, HTMLResponse
+    from fastapi.responses import HTMLResponse
     from fastapi.staticfiles import StaticFiles
 except ImportError:
     raise ImportError(
@@ -445,16 +445,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 
-
-@app.on_event("startup")
-def _mount_static() -> None:
-    """Mount the React build output if it exists."""
-    if _STATIC_DIR.is_dir():
-        app.mount(
-            "/assets",
-            StaticFiles(directory=str(_STATIC_DIR / "assets")),
-            name="frontend-assets",
-        )
+_ASSETS_DIR = _STATIC_DIR / "assets"
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -466,14 +457,19 @@ def dashboard() -> HTMLResponse:
     return HTMLResponse(_FALLBACK_HTML)
 
 
+# Mount static assets BEFORE the catch-all so /assets/* is handled by
+# StaticFiles (which sets correct MIME types) rather than spa_fallback.
+if _ASSETS_DIR.is_dir():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=str(_ASSETS_DIR)),
+        name="frontend-assets",
+    )
+
+
 @app.get("/{path:path}", response_model=None)
-def spa_fallback(path: str) -> HTMLResponse | FileResponse:
-    """SPA catch-all: serve static files or fall back to index.html."""
-    # Try exact static file first.
-    candidate = _STATIC_DIR / path
-    if candidate.is_file() and _STATIC_DIR in candidate.resolve().parents:
-        return FileResponse(str(candidate))
-    # Fall back to SPA index.
+def spa_fallback(path: str) -> HTMLResponse:
+    """SPA catch-all: fall back to index.html for client-side routing."""
     index = _STATIC_DIR / "index.html"
     if index.is_file():
         return HTMLResponse(index.read_text(encoding="utf-8"))
