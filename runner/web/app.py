@@ -466,7 +466,7 @@ def dashboard() -> HTMLResponse:
     return HTMLResponse(_FALLBACK_HTML)
 
 
-@app.get("/{path:path}")
+@app.get("/{path:path}", response_model=None)
 def spa_fallback(path: str) -> HTMLResponse | FileResponse:
     """SPA catch-all: serve static files or fall back to index.html."""
     # Try exact static file first.
