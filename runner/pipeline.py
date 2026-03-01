@@ -646,7 +646,7 @@ def main() -> None:
 
     if mode == "webui":
         try:
-            from runner.web.app import start_server  # noqa: PLC0415
+            from web.app import start_server  # noqa: PLC0415
 
             start_server()
         except ImportError as e:

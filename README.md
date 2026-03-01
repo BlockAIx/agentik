@@ -200,10 +200,10 @@ agentik/
 │   ├── notify.py            #   webhook notification support
 │   ├── plan.py              #   ROADMAP generation from NL descriptions
 │   ├── review.py            #   human-in-the-loop review mode
-│   ├── rollback.py          #   git rollback on task failure
-│   └── web/                 #   web UI dashboard
-│       ├── app.py           #     FastAPI backend + REST API
-│       └── frontend/        #     React + Tailwind + shadcn SPA
+│   └── rollback.py          #   git rollback on task failure
+├── web/                     # web UI dashboard
+│   ├── app.py               #   FastAPI backend + REST API
+│   └── frontend/            #   React + Tailwind + shadcn SPA
 ├── scripts/
 │   ├── start.sh             # quick-start script (Linux/macOS)
 │   └── start.ps1            # quick-start script (Windows)
@@ -427,7 +427,7 @@ pip install fastapi uvicorn[standard]
 Select **Start web UI** from the agentik menu, or run directly:
 
 ```bash
-python -c "from runner.web.app import start_server; start_server()"
+python -c "from web.app import start_server; start_server()"
 ```
 
 The dashboard opens at `http://127.0.0.1:8420` with these tabs:
@@ -450,10 +450,10 @@ Live updates are pushed over WebSocket — no polling needed.
 ### Developing the frontend
 
 ```bash
-cd runner/web/frontend
+cd web/frontend
 npm install
 npm run dev          # Vite dev server with API proxy to :8420
-npm run build        # production build → runner/web/static/
+npm run build        # production build → web/static/
 ```
 
 ## Human-in-the-loop review

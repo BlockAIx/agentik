@@ -69,6 +69,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
 # Copy the rest of the source.
 COPY agentik.py budget.json check_roadmap.py opencode.jsonc ./
 COPY runner/ runner/
+COPY web/__init__.py web/_pipeline_worker.py web/app.py web/
 COPY helpers/ helpers/
 COPY prompts/ prompts/
 COPY tests/ tests/
@@ -78,12 +79,12 @@ COPY AGENTS.md README.md ROADMAP_EXAMPLE.md LICENSE ./
 RUN mkdir -p projects
 
 # ── Pre-build the web frontend (if node_modules are present) ──────────────────
-COPY runner/web/frontend/ runner/web/frontend/
-RUN cd runner/web/frontend \
+COPY web/frontend/ web/frontend/
+RUN cd web/frontend \
     && npm install \
     && npm run build \
-    && mkdir -p /app/runner/web/static \
-    && cp -r dist/* /app/runner/web/static/ \
+    && mkdir -p /app/web/static \
+    && cp -r dist/* /app/web/static/ \
     || echo "Frontend build skipped (optional)"
 
 # ── Runtime ────────────────────────────────────────────────────────────────────

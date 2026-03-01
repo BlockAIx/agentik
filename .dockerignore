@@ -17,8 +17,8 @@ projects/
 .runner_state.json
 
 # Frontend dev artifacts (rebuilt in Docker)
-runner/web/frontend/node_modules
-runner/web/static
+web/frontend/node_modules
+web/static
 
 # IDE / editor
 .vscode

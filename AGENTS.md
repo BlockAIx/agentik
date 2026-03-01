@@ -110,10 +110,10 @@ agentik/                     <- workspace root repo (runner tooling only)
 │   ├── notify.py           <- webhook notification support
 │   ├── plan.py             <- ROADMAP generation from NL descriptions
 │   ├── review.py           <- human-in-the-loop review mode
-│   ├── rollback.py         <- git rollback on task failure
-│   └── web/                <- web UI dashboard
-│       ├── app.py          <- FastAPI backend + REST API
-│       └── frontend/       <- React + Tailwind + shadcn SPA
+│   └── rollback.py         <- git rollback on task failure
+├── web/                        <- web UI dashboard (separate from runner)
+│   ├── app.py              <- FastAPI backend + REST API
+│   └── frontend/           <- React + Tailwind + shadcn SPA
 ├── AGENTS.md
 ├── requirements.txt        <- runner deps
 └── projects/

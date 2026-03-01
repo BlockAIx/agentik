@@ -21,7 +21,7 @@ import sys
 def _start_web(host: str = "127.0.0.1", port: int = 8420) -> None:
     """Launch the FastAPI web UI server."""
     try:
-        from runner.web.app import start_server
+        from web.app import start_server
 
         start_server(host=host, port=port)
     except ImportError as e:

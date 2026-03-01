@@ -16,7 +16,7 @@ __pycache__/
 projects/
 
 # Frontend build artifacts and dependencies
-runner/web/static/
-runner/web/frontend/node_modules/
+web/static/
+web/frontend/node_modules/
 
 .vscode/
