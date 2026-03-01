@@ -485,7 +485,11 @@ def pipeline_status() -> dict:
 
 @app.post("/api/projects/{name}/generate-roadmap")
 async def generate_roadmap_api(name: str, request: Request) -> dict:
-    """Generate a ROADMAP.json from a natural language description."""
+    """Generate a ROADMAP.json from a natural language description.
+
+    The architect agent call is CPU/IO-bound (subprocess with up to 120 s
+    timeout), so we offload it to a thread to avoid blocking the event loop.
+    """
     body = await request.json()
     description = body.get("description", "")
     ecosystem = body.get("ecosystem", "python")
@@ -496,7 +500,7 @@ async def generate_roadmap_api(name: str, request: Request) -> dict:
     from runner.plan import _call_architect  # noqa: PLC0415
 
     full_desc = f"Project: {name}\nEcosystem: {ecosystem}\n\n{description}"
-    result = _call_architect(full_desc, name, ecosystem)
+    result = await asyncio.to_thread(_call_architect, full_desc, name, ecosystem)
 
     if result is None:
         raise HTTPException(500, "Failed to generate ROADMAP")
