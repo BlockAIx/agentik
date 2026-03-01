@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useDiff, useHandleReview } from "@/hooks/use-queries"
 import type { ProjectDetail } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import {
   CheckCircle2,
   GitCommitHorizontal,
@@ -12,6 +13,46 @@ import {
   XCircle,
 } from "lucide-react"
 import { useState } from "react"
+
+interface StatusFile {
+  marker: string
+  file: string
+}
+
+function parseStatusFiles(status: string): StatusFile[] {
+  return status
+    .split("\n")
+    .filter((l) => l.trim().length > 0)
+    .map((l) => {
+      const marker = l.slice(0, 2).trim()
+      let file = l.slice(3).trim()
+      // Renames: "old -> new" — use the destination path for diff lookup
+      if (marker.startsWith("R") && file.includes(" -> ")) {
+        file = file.split(" -> ")[1].trim()
+      }
+      return { marker, file }
+    })
+}
+
+function markerColor(marker: string): string {
+  if (marker === "M" || marker === "MM") return "text-yellow-400"
+  if (marker === "A" || marker === "AM") return "text-green-400"
+  if (marker === "D") return "text-red-400"
+  if (marker === "R") return "text-blue-400"
+  if (marker === "??") return "text-muted-foreground"
+  return "text-foreground"
+}
+
+function splitDiffByFile(raw: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  const chunks = raw.split(/(?=^diff --git )/m)
+  for (const chunk of chunks) {
+    if (!chunk.trim()) continue
+    const m = chunk.match(/^diff --git a\/.+ b\/(.+)$/m)
+    if (m) out[m[1].trim()] = chunk
+  }
+  return out
+}
 
 export function Review({
   projectName,
@@ -24,6 +65,7 @@ export function Review({
   const reviewMutation = useHandleReview()
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
 
   const handleAction = async (action: "approve" | "reject") => {
     setError(null)
@@ -135,39 +177,100 @@ export function Review({
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
               Git Diff
-              <Badge variant="secondary" className="text-xs font-mono">
-                {diff.status || "clean"}
-              </Badge>
+              {(() => {
+                const files = parseStatusFiles(diff.status)
+                return files.length > 0 ? (
+                  <Badge variant="secondary" className="text-xs">
+                    {files.length} file{files.length > 1 ? "s" : ""} changed
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">clean</Badge>
+                )
+              })()}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {diff.diff ? (
-              <div
-                className="overflow-y-auto rounded-md border bg-secondary/30"
-                style={{ maxHeight: "50vh" }}
-              >
-                <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-all">
-                  {diff.diff.split("\n").map((line, i) => {
-                    let color = ""
-                    if (line.startsWith("+") && !line.startsWith("+++"))
-                      color = "text-green-400"
-                    else if (line.startsWith("-") && !line.startsWith("---"))
-                      color = "text-red-400"
-                    else if (line.startsWith("@@")) color = "text-blue-400"
-                    else if (
-                      line.startsWith("diff ") ||
-                      line.startsWith("index ")
-                    )
-                      color = "text-muted-foreground"
-                    return (
-                      <span key={i} className={color}>
-                        {line}
-                        {"\n"}
-                      </span>
-                    )
-                  })}
-                </pre>
-              </div>
+              (() => {
+                const files = parseStatusFiles(diff.status)
+                const byFile = splitDiffByFile(diff.diff)
+                const activeContent: string | null = selectedFile
+                  ? (byFile[selectedFile] ?? null)
+                  : diff.diff
+                return (
+                  <div className="flex rounded-md border overflow-hidden" style={{ maxHeight: "55vh" }}>
+                    {/* File list sidebar */}
+                    {files.length > 0 && (
+                      <div className="w-52 shrink-0 border-r overflow-y-auto">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFile(null)}
+                          className={cn(
+                            "w-full text-left px-3 py-1.5 text-xs font-medium border-b transition-colors",
+                            selectedFile === null
+                              ? "bg-secondary text-foreground"
+                              : "text-muted-foreground hover:bg-secondary/50",
+                          )}
+                        >
+                          All files
+                        </button>
+                        {files.map(({ marker, file }) => (
+                          <button
+                            key={file}
+                            type="button"
+                            onClick={() => setSelectedFile(file === selectedFile ? null : file)}
+                            className={cn(
+                              "w-full text-left px-3 py-1.5 flex items-start gap-1.5 transition-colors",
+                              selectedFile === file
+                                ? "bg-secondary"
+                                : "hover:bg-secondary/50",
+                            )}
+                          >
+                            <span className={cn("text-xs font-mono font-bold shrink-0 mt-0.5 w-4", markerColor(marker))}>
+                              {marker || "?"}
+                            </span>
+                            <span className="text-xs font-mono break-all leading-tight text-foreground">
+                              {file.includes("/")
+                                ? file.split("/").slice(-1)[0]
+                                : file}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* Diff content */}
+                    <div className="flex-1 overflow-auto">
+                      {activeContent === null ? (
+                        <div className="h-full flex items-center justify-center text-xs text-muted-foreground p-8 text-center">
+                          No diff available for this file.
+                        </div>
+                      ) : (
+                      <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-all">
+                        {activeContent.split("\n").map((line, i) => {
+                          let color = ""
+                          if (line.startsWith("+") && !line.startsWith("+++"))
+                            color = "text-green-400"
+                          else if (line.startsWith("-") && !line.startsWith("---"))
+                            color = "text-red-400"
+                          else if (line.startsWith("@@")) color = "text-blue-400"
+                          else if (
+                            line.startsWith("diff ") ||
+                            line.startsWith("index ")
+                          )
+                            color = "text-muted-foreground"
+                          return (
+                            <span key={i} className={color}>
+                              {line}
+                              {"\n"}
+                            </span>
+                          )
+                        })}
+                      </pre>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()
             ) : (
               <div className="text-sm text-muted-foreground p-4 text-center">
                 No changes detected.

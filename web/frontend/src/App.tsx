@@ -42,7 +42,7 @@ export default function App(): React.JSX.Element {
           <Suspense fallback={<Loading />}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/project/:name" element={<ProjectView />} />
+              <Route path="/project/:name/:tab?" element={<ProjectView />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </Suspense>

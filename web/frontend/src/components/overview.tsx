@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Coins,
+  Flag,
   Layers,
   Zap,
 } from "lucide-react"
@@ -32,6 +33,16 @@ export function Overview({ project, invalidModels }: OverviewProps) {
   const ready = tasks.filter((t) => t.status === "ready").length;
   const blocked = tasks.filter((t) => t.status === "blocked").length;
   const pct = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
+
+  const donePct = tasks.length > 0 ? (done / tasks.length) * 100 : 0;
+  const readyPct = tasks.length > 0 ? (ready / tasks.length) * 100 : 0;
+
+  const currentTaskInfo = state.current_task
+    ? tasks.find((t) => t.heading === state.current_task)
+    : null;
+  const nextMilestone = tasks.find(
+    (t) => t.agent === "milestone" && t.status !== "done",
+  );
 
   const agentCounts: Record<string, number> = {};
   for (const t of tasks) {
@@ -63,6 +74,25 @@ export function Overview({ project, invalidModels }: OverviewProps) {
           </div>
         </div>
       )}
+
+      {/* Running task banner */}
+      {currentTaskInfo && (
+        <div className="p-3 border border-green-500/20 bg-green-500/5 rounded-md flex items-center gap-3 text-sm">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+          </span>
+          <span className="text-xs font-medium text-green-400 shrink-0">Running</span>
+          <span className="font-medium truncate">{currentTaskInfo.title}</span>
+          <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0">
+            {currentTaskInfo.agent}
+          </Badge>
+          {state.attempt > 1 && (
+            <span className="text-xs text-yellow-400 shrink-0">attempt {state.attempt}</span>
+          )}
+        </div>
+      )}
+
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -93,20 +123,48 @@ export function Overview({ project, invalidModels }: OverviewProps) {
             </CardTitle>
             <Layers className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <Badge variant="default" className="bg-green-600">
-                {done} done
-              </Badge>
-              <Badge variant="secondary" className="bg-yellow-600">
-                {ready} ready
-              </Badge>
-              <Badge variant="outline">{blocked} blocked</Badge>
+          <CardContent className="space-y-3">
+            {/* Segmented progress bar */}
+            <div className="flex h-2 rounded-full bg-muted overflow-hidden">
+              {done > 0 && (
+                <div
+                  className="h-full bg-green-600 transition-all"
+                  style={{ width: `${donePct}%` }}
+                />
+              )}
+              {ready > 0 && (
+                <div
+                  className="h-full bg-yellow-600 transition-all"
+                  style={{ width: `${readyPct}%` }}
+                />
+              )}
             </div>
-            {state.current_task && (
-              <p className="mt-2 text-xs text-muted-foreground truncate">
-                Current: {state.current_task.replace(/^## \d{3} - /, "")}
-              </p>
+
+            {/* Legend */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-green-600" />
+                {done} done
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-yellow-600" />
+                {ready} ready
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                {blocked} blocked
+              </span>
+            </div>
+
+            {/* Next milestone */}
+            {nextMilestone && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Flag className="h-3 w-3 shrink-0" />
+                <span className="shrink-0">Next milestone:</span>
+                <span className="font-medium text-foreground truncate">
+                  {nextMilestone.title}
+                </span>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -137,8 +195,13 @@ export function Overview({ project, invalidModels }: OverviewProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{state.failed.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Attempt {state.attempt} on current task
+            <p className="text-xs text-muted-foreground truncate">
+              {state.failed.length > 0
+                ? state.failed[state.failed.length - 1].task.replace(
+                    /^## \d{3} - /,
+                    "",
+                  )
+                : "No failed tasks"}
             </p>
           </CardContent>
         </Card>

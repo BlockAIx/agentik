@@ -507,7 +507,7 @@ def get_diff(name: str) -> dict:
     """Get the current git diff for the project."""
     project_dir = PROJECTS_ROOT / name
     result = subprocess.run(
-        f'git -C "{project_dir}" diff',
+        f'git -C "{project_dir}" diff HEAD',
         shell=True,
         capture_output=True,
         text=True,

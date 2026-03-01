@@ -81,8 +81,10 @@ RUN mkdir -p projects
 # ── Pre-build the web frontend (if node_modules are present) ──────────────────
 COPY web/frontend/ web/frontend/
 RUN cd web/frontend \
-    && npm install \
-    && npm run build \
+    && corepack enable \
+    && corepack prepare pnpm@latest --activate \
+    && pnpm install --frozen-lockfile \
+    && pnpm run build \
     && mkdir -p /app/web/static \
     && cp -r dist/* /app/web/static/ \
     || echo "Frontend build skipped (optional)"

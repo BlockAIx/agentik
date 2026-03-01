@@ -11,35 +11,63 @@ import { Tasks } from "@/components/tasks"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@/components/ui/tabs"
 import {
-    useAvailableModels,
-    useInvalidateProject,
-    useModels,
-    useProject,
+  useAvailableModels,
+  useInvalidateProject,
+  useModels,
+  useProject,
 } from "@/hooks/use-queries"
 import { useWsStore } from "@/stores/ws-store"
 import {
-    Cpu,
-    Eye,
-    FileCode2,
-    FileText,
-    GitBranch,
-    LayoutDashboard,
-    ListChecks,
-    Settings2,
-    Sparkles,
+  Cpu,
+  Eye,
+  FileCode2,
+  FileText,
+  GitBranch,
+  LayoutDashboard,
+  ListChecks,
+  Settings2,
+  Sparkles,
 } from "lucide-react"
-import { useEffect } from "react"
-import { useParams } from "react-router-dom"
+import { useCallback, useEffect } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+
+const VALID_TABS = [
+  "overview",
+  "graph",
+  "tasks",
+  "logs",
+  "editor",
+  "generator",
+  "models",
+  "review",
+  "controls",
+] as const
+
+type Tab = (typeof VALID_TABS)[number]
+
+function isValidTab(v: string | undefined): v is Tab {
+  return VALID_TABS.includes(v as Tab)
+}
 
 export function ProjectView(): React.JSX.Element {
-  const { name } = useParams<{ name: string }>()
+  const { name, tab } = useParams<{ name: string; tab: string }>()
   const projectName = name ?? ""
+  const navigate = useNavigate()
+  const activeTab: Tab = isValidTab(tab) ? tab : "overview"
+
+  const onTabChange = useCallback(
+    (value: string) => {
+      const next = value === "overview" ? "" : `/${value}`
+      navigate(`/project/${projectName}${next}`, { replace: true })
+    },
+    [navigate, projectName],
+  )
 
   const { data: detail, isLoading } = useProject(projectName)
   const { data: availableModels = [] } = useAvailableModels()
@@ -88,7 +116,7 @@ export function ProjectView(): React.JSX.Element {
           <p>Project &ldquo;{projectName}&rdquo; not found.</p>
         </div>
       ) : (
-        <Tabs defaultValue="overview" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
           <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="overview" className="gap-1 text-xs">
               <LayoutDashboard className="h-3.5 w-3.5" />

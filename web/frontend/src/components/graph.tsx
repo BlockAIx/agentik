@@ -2,11 +2,11 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { LayerInfo, ProjectDetail, TaskInfo } from "@/lib/api"
 import {
-  Background,
-  type Edge,
-  type Node,
-  ReactFlow,
-  ReactFlowProvider,
+    Background,
+    type Edge,
+    type Node,
+    ReactFlow,
+    ReactFlowProvider,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { useMemo } from "react"
@@ -22,11 +22,6 @@ const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }
 };
 
 function getNodeColors(task: TaskInfo) {
-  if (task.agent === "milestone") {
-    if (task.status === "done") return { bg: "#7e22ce", border: "#6b21a8", text: "#ffffff" };
-    if (task.status === "ready") return { bg: "#a855f7", border: "#9333ea", text: "#ffffff" };
-    return { bg: "#3b0764", border: "#2e1065", text: "#e9d5ff" };
-  }
   return STATUS_COLORS[task.status] ?? STATUS_COLORS.blocked;
 }
 
@@ -53,18 +48,19 @@ function buildLayout(tasks: TaskInfo[], layers: LayerInfo[]): { nodes: Node[]; e
       const task = taskById.get(id);
       if (!task) return;
       const colors = getNodeColors(task);
+      const isMilestone = task.agent === "milestone";
       nodes.push({
         id,
         position: {
           x: startX + i * (NODE_WIDTH + NODE_GAP_X),
           y: layer.index * LAYER_HEIGHT,
         },
-        data: { label: `${task.id}. ${task.title}` },
+        data: { label: isMilestone ? `◆ ${task.title}` : `${task.id}. ${task.title}` },
         style: {
           background: colors.bg,
-          border: `2px solid ${colors.border}`,
+          border: `2px ${isMilestone ? "dashed" : "solid"} ${colors.border}`,
           color: colors.text,
-          borderRadius: 8,
+          borderRadius: isMilestone ? 12 : 8,
           padding: "8px 12px",
           fontSize: 13,
           fontWeight: 500,
@@ -122,9 +118,11 @@ export function Graph({ project }: { project: ProjectDetail }) {
   const ready = project.tasks.filter((t) => t.status === "ready").length;
   const blocked = project.tasks.filter((t) => t.status === "blocked").length;
 
+  const milestones = project.tasks.filter((t) => t.agent === "milestone").length;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Badge variant="default" className="bg-green-600">
           {done} Done
         </Badge>
@@ -132,6 +130,11 @@ export function Graph({ project }: { project: ProjectDetail }) {
           {ready} Ready
         </Badge>
         <Badge variant="outline">{blocked} Blocked</Badge>
+        {milestones > 0 && (
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground border border-dashed border-muted-foreground/40 rounded-sm px-1.5 py-0.5">
+            ◆ {milestones} milestone{milestones > 1 ? "s" : ""}
+          </span>
+        )}
         <span className="text-sm text-muted-foreground">
           {project.layers.length} layers
         </span>

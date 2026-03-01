@@ -69,7 +69,7 @@ export function Tile({
       {hasHeader && (
         <CardHeader
           className={cn(
-            "flex flex-row items-center py-3",
+            "flex flex-row items-center",
             action ? "justify-between" : "",
           )}
         >

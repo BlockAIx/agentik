@@ -618,7 +618,7 @@ class TestGetTaskLayers:
         assert set(layers[1]) == {"## 002 - Left", "## 003 - Right"}
 
     def test_milestone_alone_in_layer(self, tmp_path: Path) -> None:
-        """A milestone with the same deps as a build task must NOT share a layer."""
+        """A milestone with the same deps as a build task gets its own layer first."""
         from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
 
         project = _make_layered_project(
@@ -650,14 +650,14 @@ class TestGetTaskLayers:
         tasks = get_tasks(project)
         graph = parse_task_graph(project)
         layers = get_task_layers(tasks, graph, project)
-        # Build must come before the milestone
+        # Milestone fires as soon as its deps are met (barrier before peer work)
         assert len(layers) == 3
         assert layers[0] == ["## 001 - Root"]
-        assert layers[1] == ["## 002 - Build"]
-        assert layers[2] == ["## 003 - Review"]
+        assert layers[1] == ["## 003 - Review"]
+        assert layers[2] == ["## 002 - Build"]
 
     def test_milestone_after_parallel_work(self, tmp_path: Path) -> None:
-        """Milestone runs AFTER all parallel non-milestone candidates."""
+        """Milestone fires before peer non-milestone candidates (barrier point)."""
         from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
 
         project = _make_layered_project(
@@ -696,11 +696,11 @@ class TestGetTaskLayers:
         tasks = get_tasks(project)
         graph = parse_task_graph(project)
         layers = get_task_layers(tasks, graph, project)
-        # Layer 0: Root, Layer 1: Left+Right (parallel), Layer 2: Gate (alone)
+        # Layer 0: Root, Layer 1: Gate (milestone barrier), Layer 2: Left+Right
         assert len(layers) == 3
         assert layers[0] == ["## 001 - Root"]
-        assert set(layers[1]) == {"## 002 - Left", "## 003 - Right"}
-        assert layers[2] == ["## 004 - Gate"]
+        assert layers[1] == ["## 004 - Gate"]
+        assert set(layers[2]) == {"## 002 - Left", "## 003 - Right"}
 
     def test_milestone_never_shares_layer(self, tmp_path: Path) -> None:
         """Even with only milestone candidates, each gets its own layer."""
@@ -788,3 +788,63 @@ class TestGetTaskLayers:
         assert layers[1] == ["## 002 - Build"]
         assert layers[2] == ["## 003 - Gate"]
         assert layers[3] == ["## 004 - Phase2"]
+
+    def test_milestone_not_pushed_past_unrelated_work(self, tmp_path: Path) -> None:
+        """Milestone must NOT be deferred behind tasks it doesn't depend on.
+
+        Reproduces the blockdrop bug: milestone 3 depends on [2], task 4 also
+        depends on [2], and task 5 depends on [4].  Milestone must appear right
+        after task 2, not after tasks 4 and 5.
+        """
+        from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
+
+        project = _make_layered_project(
+            tmp_path,
+            [
+                {
+                    "id": 1,
+                    "title": "Root",
+                    "depends_on": [],
+                    "outputs": ["a.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 2,
+                    "title": "Core",
+                    "depends_on": [1],
+                    "outputs": ["b.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 3,
+                    "title": "Alpha",
+                    "agent": "milestone",
+                    "depends_on": [2],
+                    "version": "0.1.0",
+                },
+                {
+                    "id": 4,
+                    "title": "Feature",
+                    "depends_on": [2],
+                    "outputs": ["c.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 5,
+                    "title": "Extension",
+                    "depends_on": [4],
+                    "outputs": ["d.py"],
+                    "acceptance": "ok",
+                },
+            ],
+        )
+        tasks = get_tasks(project)
+        graph = parse_task_graph(project)
+        layers = get_task_layers(tasks, graph, project)
+        # Milestone fires immediately after its deps — before unrelated work
+        assert len(layers) == 5
+        assert layers[0] == ["## 001 - Root"]
+        assert layers[1] == ["## 002 - Core"]
+        assert layers[2] == ["## 003 - Alpha"]   # milestone barrier
+        assert layers[3] == ["## 004 - Feature"]
+        assert layers[4] == ["## 005 - Extension"]

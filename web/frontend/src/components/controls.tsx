@@ -3,20 +3,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
-    useInvalidateProject,
-    usePipelineStatus,
-    useRunPipeline,
-    useStopPipeline,
+  useInvalidateProject,
+  usePipelineStatus,
+  useRunPipeline,
+  useStopPipeline,
 } from "@/hooks/use-queries"
 import type { ProjectDetail } from "@/lib/api"
 import { useWsStore } from "@/stores/ws-store"
 import {
-    AlertTriangle,
-    Loader2,
-    Play,
-    RefreshCw,
-    Square,
-    Trash2,
+  AlertTriangle,
+  Loader2,
+  Play,
+  RefreshCw,
+  Square,
+  Trash2,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
@@ -223,7 +223,7 @@ export function Controls({
 
       {/* Live log output panel */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between py-3">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm">Live Pipeline Output</CardTitle>
           <Button
             variant="ghost"

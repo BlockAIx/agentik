@@ -43,7 +43,7 @@ export function Logs({
     <div className="grid grid-cols-[280px_1fr] gap-4" style={{ minHeight: "50vh" }}>
       {/* Left panel — log tree */}
       <Card className="overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between py-3">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-1.5">
             <FolderOpen className="h-3.5 w-3.5" />
             Task Logs
@@ -119,7 +119,7 @@ export function Logs({
 
       {/* Right panel — log viewer */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between py-3">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5" />
             {activeLog ? activeLog.split("/").pop() : "Log Viewer"}

@@ -111,7 +111,7 @@ export function RoadmapEditor({
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between py-3">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-1.5">
             <FileCode2 className="h-4 w-4" />
             ROADMAP.json

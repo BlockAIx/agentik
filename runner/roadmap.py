@@ -250,11 +250,12 @@ def get_task_layers(
 ) -> list[list[str]]:
     """Group tasks into topological layers.
 
-    Non-milestone tasks are grouped into parallel layers first.
-    Milestone tasks are always placed alone in their own layer and only
-    after all non-milestone candidates in the same topological wave have
-    been placed.  This guarantees milestones never share a layer with
-    other tasks and always act as sequential barrier points.
+    Milestone tasks are barrier points: once a milestone's dependencies
+    are satisfied it is placed alone in its own layer *before* any peer
+    non-milestone candidates.  This ensures milestones act as review
+    gates between the work they depend on and subsequent tasks.
+
+    Non-milestone tasks are grouped in parallel layers as usual.
     """
     layers: list[list[str]] = []
     remaining = list(all_tasks)
@@ -267,16 +268,15 @@ def get_task_layers(
             # Fallback for cycles or disconnected graphs
             candidates = list(remaining)
 
-        non_milestones = [
-            t for t in candidates if not is_milestone_task(t, project_dir)
+        milestones = [
+            t for t in candidates if is_milestone_task(t, project_dir)
         ]
 
-        if non_milestones:
-            # Always schedule regular work before milestones.
-            layer = non_milestones
+        if milestones:
+            # Milestones fire as soon as their deps are met — one per layer.
+            layer = [milestones[0]]
         else:
-            # Only milestones are candidates — place exactly one per layer.
-            layer = [candidates[0]]
+            layer = candidates
 
         layers.append(layer)
         placed.update(layer)
