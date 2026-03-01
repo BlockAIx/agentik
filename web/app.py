@@ -502,8 +502,7 @@ async def generate_roadmap_api(name: str, request: Request) -> dict:
         raise HTTPException(500, "Failed to generate ROADMAP")
 
     try:
-        roadmap = json.loads(result)
-        return {"roadmap": roadmap}
+        return json.loads(result)
     except json.JSONDecodeError:
         raise HTTPException(500, "Generated invalid JSON")
 

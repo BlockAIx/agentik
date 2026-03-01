@@ -196,7 +196,7 @@ export const api = {
   /* ── Roadmap generation ── */
 
   generateRoadmap: (name: string, description: string, ecosystem: string) =>
-    fetchJson<{ roadmap: Record<string, unknown> }>(`/api/projects/${name}/generate-roadmap`, {
+    fetchJson<Record<string, unknown>>(`/api/projects/${name}/generate-roadmap`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ description, ecosystem }),
