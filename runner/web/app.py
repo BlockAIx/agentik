@@ -2,10 +2,17 @@
 
 import asyncio
 import json
+import mimetypes
 import re
 import subprocess
 import threading
 from pathlib import Path
+
+# Fix MIME types on Windows — the registry often maps .js to text/plain,
+# which causes browsers to reject module scripts.
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("text/html", ".html")
 
 try:
     import uvicorn
