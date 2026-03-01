@@ -164,10 +164,22 @@ prose blocks) and short inline comments on non-obvious logic.
 what's failing; no refactoring.
 
 **Static checks** — after green tests the runner auto-detects and runs the
-appropriate static analysis tools for the project\u2019s ecosystem (e.g.
+appropriate static analysis tools for the project's ecosystem (e.g.
 `ruff` for Python, `deno check` + `deno lint` for Deno, `npx tsc --noEmit`
 for Node/TS, `go vet` for Go, `cargo clippy` for Rust). If issues are found
 it continues the session asking you to fix **only** what was reported.
+
+**IDE / editor diagnostic check** — after every file edit (build *and* fix
+passes) call the IDE diagnostic tool before declaring work complete:
+- **VS Code** — use the `get_errors` tool. It surfaces Pylance type errors,
+  ESLint/Tailwind lint warnings, unused-variable diagnostics, and any other
+  language-server reports that CLI tools do not catch.
+- **Other editors / headless** — run the ecosystem CLI linter directly
+  (`ruff check`, `npx eslint`, `deno lint`, etc.).
+
+Fix every reported error. Warnings that the linter suggests be converted to
+a canonical form (e.g. Tailwind arbitrary values → shorthand classes) must
+also be resolved — leave no stale IDE diagnostics.
 
 For **Node/TS projects** the runner also calls `npx tsc --noEmit`. Before every
 build the scaffold step auto-patches `tsconfig.json` to:
@@ -468,6 +480,23 @@ to set the tag explicitly, or the runner derives one from the task number.
   under test.
 - Deterministic: no `random`, `time.sleep`, or unmocked network calls.
 - `acceptance:` field is the exact criterion the runner checks.
+
+### IDE / editor diagnostics
+
+After **every** file edit — whether build, fix, or direct change — run the
+IDE diagnostic check before considering the work done:
+
+1. **In VS Code:** call the `get_errors` tool. Review every reported item:
+   - Errors (`compileError`) **must** be fixed before finishing.
+   - Suggestions (e.g. "class X can be written as Y") **must** also be
+     applied — they appear as compile errors in the panel.
+2. **Outside VS Code / headless:** run the appropriate CLI linter for the
+   ecosystem (`ruff check .`, `npx tsc --noEmit && npx eslint .`,
+   `deno check && deno lint`, `go vet ./...`, `cargo clippy -- -D warnings`).
+3. Re-run the check after applying fixes to confirm zero remaining errors.
+
+Never hand back to the user while `get_errors` (or its CLI equivalent)
+still reports unresolved diagnostics in files you edited.
 
 ### Scope
 

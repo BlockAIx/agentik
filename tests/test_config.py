@@ -1,8 +1,5 @@
 """Tests for runner.config — budget loading, render_prompt, slugify."""
 
-import json
-import re
-import textwrap
 from pathlib import Path
 
 import pytest

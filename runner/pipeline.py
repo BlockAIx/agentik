@@ -22,7 +22,6 @@ from runner.opencode import (
 )
 from runner.roadmap import (
     get_ready_tasks,
-    get_task_body,
     get_task_ecosystem,
     get_task_outputs,
     get_task_version,
@@ -330,7 +329,7 @@ def process_milestone(task: str, project_dir: Path) -> None:
     _console.print(f"\n[bold][1/2] Milestone review[/]  [dim](v{version})[/]")
     run_opencode_milestone(task, version, project_dir)
 
-    _console.print(f"\n[bold][2/2] Tag & merge[/]")
+    _console.print("\n[bold][2/2] Tag & merge[/]")
     tag_milestone(version, project_dir)
     mark_done(task, project_dir)
     _console.print(f"\n[green bold]✔ Milestone:[/] {task} → v{version}")

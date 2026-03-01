@@ -3,20 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "@/components/ui/table"
 import type { ProjectDetail } from "@/lib/api"
 import {
-  Activity,
-  CheckCircle2,
-  Coins,
-  Layers,
-  Zap,
+    Activity,
+    AlertTriangle,
+    CheckCircle2,
+    Coins,
+    Layers,
+    Zap,
 } from "lucide-react"
 
 function fmt(n: number): string {
@@ -37,9 +38,10 @@ function fmtDate(iso: string): string {
 
 interface OverviewProps {
   project: ProjectDetail;
+  invalidModels?: Array<{ agent: string; model: string }>;
 }
 
-export function Overview({ project }: OverviewProps) {
+export function Overview({ project, invalidModels }: OverviewProps) {
   const { state, tasks } = project;
   const done = tasks.filter((t) => t.status === "done").length;
   const ready = tasks.filter((t) => t.status === "ready").length;
@@ -64,6 +66,18 @@ export function Overview({ project }: OverviewProps) {
 
   return (
     <div className="space-y-6">
+      {invalidModels && invalidModels.length > 0 && (
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md flex items-start gap-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-medium">
+              {invalidModels.length} model{invalidModels.length > 1 ? "s" : ""} not available:
+            </span>{" "}
+            {invalidModels.map((m) => m.agent).join(", ")} — go to the{" "}
+            <strong>Models tab</strong> to fix before running the pipeline.
+          </div>
+        </div>
+      )}
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -193,7 +207,7 @@ export function Overview({ project }: OverviewProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="max-h-[350px]">
+            <ScrollArea className="max-h-87.5">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -210,7 +224,7 @@ export function Overview({ project }: OverviewProps) {
                       : 0;
                     return (
                       <TableRow key={task}>
-                        <TableCell className="text-xs font-medium truncate max-w-[200px]">
+                        <TableCell className="text-xs font-medium truncate max-w-50">
                           {task.replace(/^## \d{3} - /, "")}
                         </TableCell>
                         <TableCell className="text-right font-mono text-xs">
@@ -249,7 +263,7 @@ export function Overview({ project }: OverviewProps) {
             <CardTitle className="text-sm">Recent API Sessions</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="max-h-[250px]">
+            <ScrollArea className="max-h-62.5">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -265,7 +279,7 @@ export function Overview({ project }: OverviewProps) {
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {fmtDate(s.timestamp)}
                       </TableCell>
-                      <TableCell className="text-xs font-medium truncate max-w-[180px]">
+                      <TableCell className="text-xs font-medium truncate max-w-45">
                         {(s.task || "\u2014").replace(/^## \d{3} - /, "")}
                       </TableCell>
                       <TableCell>

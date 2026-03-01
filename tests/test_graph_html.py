@@ -1,10 +1,8 @@
 """Tests for runner.graph_html — interactive HTML dependency graph."""
 
-import json
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 
 class TestGenerateGraphHtml:

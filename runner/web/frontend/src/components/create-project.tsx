@@ -76,7 +76,7 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
           New Project
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-120">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>
@@ -128,7 +128,7 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
               placeholder="Brief project description — injected into every build prompt as project context."
               value={preamble}
               onChange={(e) => setPreamble(e.target.value)}
-              className="min-h-[80px] resize-y"
+              className="min-h-20 resize-y"
             />
           </div>
 

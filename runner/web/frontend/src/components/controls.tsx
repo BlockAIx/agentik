@@ -7,6 +7,7 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import type { ProjectDetail } from "@/lib/api";
 import { api } from "@/lib/api";
 import {
+    AlertTriangle,
     Loader2,
     Play,
     RefreshCw,
@@ -21,10 +22,12 @@ export function Controls({
   projectName,
   detail,
   onRefresh,
+  invalidModels,
 }: {
   projectName: string;
   detail: ProjectDetail;
   onRefresh: () => void;
+  invalidModels?: Array<{ agent: string; model: string }>;
 }) {
   const [running, setRunning] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -115,7 +118,7 @@ export function Controls({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <Button onClick={handleRun} disabled={running || pipelineActive || !statusChecked}>
+            <Button onClick={handleRun} disabled={running || pipelineActive || !statusChecked || (invalidModels?.length ?? 0) > 0}>
               {running ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
               ) : (
@@ -159,6 +162,20 @@ export function Controls({
             )}
           </div>
 
+          {invalidModels && invalidModels.length > 0 && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Model configuration invalid — cannot run pipeline</p>
+                <ul className="mt-1 space-y-0.5">
+                  {invalidModels.map((m) => (
+                    <li key={m.agent} className="text-xs font-mono">{m.agent}: {m.model}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs text-muted-foreground">Go to the Models tab to update them.</p>
+              </div>
+            </div>
+          )}
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
               {error}
@@ -222,7 +239,7 @@ export function Controls({
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="bg-zinc-950 rounded-b-lg font-mono text-xs text-green-400 h-[460px] overflow-y-auto p-3 border-t border-border">
+          <div className="bg-zinc-950 rounded-b-lg font-mono text-xs text-green-400 h-115 overflow-y-auto p-3 border-t border-border">
             {logs.length === 0 ? (
               <span className="text-zinc-500">
                 {pipelineActive

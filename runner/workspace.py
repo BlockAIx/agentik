@@ -335,7 +335,7 @@ def install_project_dependencies(project_dir: Path) -> None:
             _console.print(
                 f"[yellow]⚠ dependency install failed ({manifest_name}):[/] {err_summary}"
             )
-            _console.print(f"[dim]  full output in terminal scrollback[/]")
+            _console.print("[dim]  full output in terminal scrollback[/]")
         else:
             _console.print(f"[dim][deps][/] {manifest_name} installed.")
 
@@ -452,7 +452,7 @@ def ensure_project_git(project_dir: Path) -> None:
     git_run("branch -M main", project_dir)
     git_run("checkout -b develop", project_dir)
     _console.print(
-        f"[dim][git][/] Repo initialised — branches: [cyan]main[/], [cyan]develop[/]"
+        "[dim][git][/] Repo initialised — branches: [cyan]main[/], [cyan]develop[/]"
     )
 
 
@@ -803,7 +803,7 @@ def generate_project_agents_md(project_dir: Path) -> None:
     src_rel = _src.relative_to(project_dir).as_posix() if _src != project_dir else "."
 
     layout = (
-        _ECO_LAYOUT.get(eco, f"`src/` — implementation\n`tests/` — tests")
+        _ECO_LAYOUT.get(eco, "`src/` — implementation\n`tests/` — tests")
         .replace("<pkg>", pkg)
         .replace("<project>", project_dir.name)
     )
@@ -854,8 +854,8 @@ def generate_project_agents_md(project_dir: Path) -> None:
         layout + "\n",
         "\n---\n",
         "## ROADMAP and tasks\n",
-        f"All tasks are defined in `ROADMAP.json` at the project root.\n"
-        f"The runner passes the current task's full spec to the agent as a prompt.\n",
+        "All tasks are defined in `ROADMAP.json` at the project root.\n"
+        "The runner passes the current task's full spec to the agent as a prompt.\n",
         "\nEach task has this shape:\n",
         "```json\n"
         "{\n"

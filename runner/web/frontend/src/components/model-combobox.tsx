@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import type { AvailableModel } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
@@ -19,10 +20,12 @@ import { useCallback, useMemo, useState } from "react"
 interface ModelComboboxProps {
   value: string
   onChange: (value: string) => void
-  models: string[]
+  models: AvailableModel[]
   loading?: boolean
   placeholder?: string
   className?: string
+  /** When true, applies a red border to indicate the current value is not a known model. */
+  invalid?: boolean
 }
 
 /** Max items shown in the dropdown before the user types a filter. */
@@ -35,6 +38,7 @@ export function ModelCombobox({
   loading = false,
   placeholder = "provider/model-name",
   className,
+  invalid = false,
 }: ModelComboboxProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -43,20 +47,18 @@ export function ModelCombobox({
   const filtered = useMemo(() => {
     if (!search) return models.slice(0, MAX_UNFILTERED)
     const lower = search.toLowerCase()
-    return models.filter((m) => m.toLowerCase().includes(lower)).slice(0, 100)
+    return models.filter((m) => m.full_id.toLowerCase().includes(lower)).slice(0, 100)
   }, [models, search])
 
   // Group filtered models by provider.
   const groups = useMemo(() => {
-    const map = new Map<string, string[]>()
+    const map = new Map<string, AvailableModel[]>()
     for (const m of filtered) {
-      const slash = m.indexOf("/")
-      const provider = slash > 0 ? m.slice(0, slash) : "other"
-      const existing = map.get(provider)
+      const existing = map.get(m.provider)
       if (existing) {
         existing.push(m)
       } else {
-        map.set(provider, [m])
+        map.set(m.provider, [m])
       }
     }
     return map
@@ -70,8 +72,8 @@ export function ModelCombobox({
     [onChange],
   )
 
-  // Display text: show model short name if selected.
   const displayValue = value || placeholder
+  const customNotInList = search && !models.some((m) => m.full_id === search)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -83,6 +85,7 @@ export function ModelCombobox({
           className={cn(
             "justify-between font-mono text-xs h-8",
             !value && "text-muted-foreground",
+            invalid && "border-destructive text-destructive focus:ring-destructive",
             className,
           )}
         >
@@ -90,7 +93,7 @@ export function ModelCombobox({
           <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="w-120 p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search models..."
@@ -106,7 +109,7 @@ export function ModelCombobox({
                 : "No models available. You can still type a custom model ID."}
             </CommandEmpty>
             {/* Allow using custom value that isn't in the catalog */}
-            {search && !models.includes(search) && (
+            {customNotInList && (
               <CommandGroup heading="Custom">
                 <CommandItem
                   value={search}
@@ -125,22 +128,24 @@ export function ModelCombobox({
             )}
             {[...groups.entries()].map(([provider, items]) => (
               <CommandGroup key={provider} heading={provider}>
-                {items.map((model) => (
-                  <CommandItem
-                    key={model}
-                    value={model}
-                    onSelect={() => handleSelect(model)}
-                    className="font-mono text-xs"
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-3 w-3",
-                        value === model ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    {model.slice(model.indexOf("/") + 1)}
-                  </CommandItem>
-                ))}
+                {items.map((m) => {
+                  return (
+                    <CommandItem
+                      key={m.full_id}
+                      value={m.full_id}
+                      onSelect={() => handleSelect(m.full_id)}
+                      className="font-mono text-xs"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-3 w-3 shrink-0",
+                          value === m.full_id ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+                      <span className="flex-1 truncate">{m.model}</span>
+                    </CommandItem>
+                  )
+                })}
               </CommandGroup>
             ))}
             {!search && models.length > MAX_UNFILTERED && (

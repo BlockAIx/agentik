@@ -1,13 +1,12 @@
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import type { LogEntry } from "@/lib/api";
-import { api } from "@/lib/api";
-import { AlertTriangle, ChevronRight, FileText } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import type { LogEntry } from "@/lib/api"
+import { api } from "@/lib/api"
+import { AlertTriangle, ChevronRight, FileText } from "lucide-react"
+import { useEffect, useState } from "react"
 
 export function Logs({ projectName }: { projectName: string }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -112,19 +111,6 @@ export function Logs({ projectName }: { projectName: string }) {
               ? `${selectedSlug}/${selectedLog}`
               : "Select a log file"}
           </CardTitle>
-          {selectedLog && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedSlug(null);
-                setSelectedLog(null);
-                setLogContent("");
-              }}
-            >
-              Clear
-            </Button>
-          )}
         </CardHeader>
         <CardContent>
           {loading ? (

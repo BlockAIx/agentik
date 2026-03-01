@@ -24,6 +24,17 @@
 - Inline comments only on genuinely non-obvious lines; skip anything
   self-explanatory.
 
+## Post-edit checklist
+
+After writing or modifying any file, run the IDE diagnostic check:
+- **VS Code** — call the `get_errors` tool and fix every reported error or
+  lint suggestion before finishing.
+- **Headless / other editor** — run the ecosystem CLI linter
+  (`ruff check .`, `npx tsc --noEmit`, `deno check && deno lint`,
+  `go vet ./...`, `cargo clippy -- -D warnings`) and resolve all output.
+
+Only proceed to the dependency checklist once the diagnostic check is clean.
+
 ## Dependency checklist
 
 For every third-party import you used, confirm it is declared in the manifest.

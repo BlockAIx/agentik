@@ -1,9 +1,7 @@
 """Tests for runner.state — state persistence, budget tracking, token formatting."""
 
 import json
-from datetime import date, datetime, timezone
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 

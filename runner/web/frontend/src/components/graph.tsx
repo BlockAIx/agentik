@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { ProjectDetail, TaskInfo } from "@/lib/api"
+import type { LayerInfo, ProjectDetail, TaskInfo } from "@/lib/api"
 import {
   Background,
   type Edge,
@@ -9,11 +9,11 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
-import dagre from "dagre"
 import { useMemo } from "react"
 
 const NODE_WIDTH = 200;
-const NODE_HEIGHT = 50;
+const NODE_GAP_X = 40;
+const LAYER_HEIGHT = 120;
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   done: { bg: "#16a34a", border: "#15803d", text: "#ffffff" },
@@ -21,25 +21,68 @@ const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }
   blocked: { bg: "#475569", border: "#334155", text: "#94a3b8" },
 };
 
-function buildLayout(tasks: TaskInfo[]): { nodes: Node[]; edges: Edge[] } {
-  const g = new dagre.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: "TB", nodesep: 40, ranksep: 60 });
+function getNodeColors(task: TaskInfo) {
+  if (task.agent === "milestone") {
+    if (task.status === "done") return { bg: "#7e22ce", border: "#6b21a8", text: "#ffffff" };
+    if (task.status === "ready") return { bg: "#a855f7", border: "#9333ea", text: "#ffffff" };
+    return { bg: "#3b0764", border: "#2e1065", text: "#e9d5ff" };
+  }
+  return STATUS_COLORS[task.status] ?? STATUS_COLORS.blocked;
+}
 
-  for (const task of tasks) {
-    g.setNode(String(task.id), { width: NODE_WIDTH, height: NODE_HEIGHT });
+/**
+ * Build node positions directly from the authoritative layer data returned by
+ * the Python backend (`get_task_layers`).  Layer index maps 1:1 to Y position
+ * so the visual order always matches the topological order — no auto-layout
+ * library is involved, which eliminates any risk of rank mis-ordering.
+ *
+ * Within each layer, tasks are distributed evenly and centred horizontally.
+ */
+function buildLayout(tasks: TaskInfo[], layers: LayerInfo[]): { nodes: Node[]; edges: Edge[] } {
+  const taskById = new Map(tasks.map((t) => [String(t.id), t]));
+
+  const nodes: Node[] = [];
+  for (const layer of layers) {
+    // Normalise the zero-padded IDs coming from the API ("001" → "1").
+    const ids = layer.tasks.map((s) => String(parseInt(s, 10)));
+    const count = ids.length;
+    const totalWidth = count * NODE_WIDTH + (count - 1) * NODE_GAP_X;
+    const startX = -totalWidth / 2;
+
+    ids.forEach((id, i) => {
+      const task = taskById.get(id);
+      if (!task) return;
+      const colors = getNodeColors(task);
+      nodes.push({
+        id,
+        position: {
+          x: startX + i * (NODE_WIDTH + NODE_GAP_X),
+          y: layer.index * LAYER_HEIGHT,
+        },
+        data: { label: `${task.id}. ${task.title}` },
+        style: {
+          background: colors.bg,
+          border: `2px solid ${colors.border}`,
+          color: colors.text,
+          borderRadius: 8,
+          padding: "8px 12px",
+          fontSize: 13,
+          fontWeight: 500,
+          width: NODE_WIDTH,
+          textAlign: "center" as const,
+        },
+        draggable: true,
+      });
+    });
   }
 
   const edges: Edge[] = [];
   for (const task of tasks) {
     for (const dep of task.deps) {
-      // dep is a zero-padded string ("001") — normalise to match node IDs ("1").
       const sourceId = String(parseInt(dep, 10));
       const targetId = String(task.id);
-      const edgeId = `e${sourceId}-${targetId}`;
-      g.setEdge(sourceId, targetId);
       edges.push({
-        id: edgeId,
+        id: `e${sourceId}-${targetId}`,
         source: sourceId,
         target: targetId,
         style: { stroke: "#64748b", strokeWidth: 2 },
@@ -48,37 +91,13 @@ function buildLayout(tasks: TaskInfo[]): { nodes: Node[]; edges: Edge[] } {
     }
   }
 
-  dagre.layout(g);
-
-  const nodes: Node[] = tasks.map((task) => {
-    const pos = g.node(String(task.id));
-    const colors = STATUS_COLORS[task.status] ?? STATUS_COLORS.blocked;
-    return {
-      id: String(task.id),
-      position: { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 },
-      data: { label: `${task.id}. ${task.title}` },
-      style: {
-        background: colors.bg,
-        border: `2px solid ${colors.border}`,
-        color: colors.text,
-        borderRadius: 8,
-        padding: "8px 12px",
-        fontSize: 13,
-        fontWeight: 500,
-        width: NODE_WIDTH,
-        textAlign: "center" as const,
-      },
-      draggable: true,
-    };
-  });
-
   return { nodes, edges };
 }
 
 function GraphInner({ project }: { project: ProjectDetail }) {
   const { nodes, edges } = useMemo(
-    () => buildLayout(project.tasks),
-    [project.tasks],
+    () => buildLayout(project.tasks, project.layers),
+    [project.tasks, project.layers],
   );
 
   return (
@@ -123,7 +142,7 @@ export function Graph({ project }: { project: ProjectDetail }) {
           <CardTitle className="text-sm">Dependency Graph</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[500px] w-full">
+          <div className="h-125 w-full">
             <ReactFlowProvider>
               <GraphInner project={project} />
             </ReactFlowProvider>

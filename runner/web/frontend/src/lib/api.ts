@@ -103,6 +103,19 @@ export interface ProjectBudget {
   sessions: BudgetSession[]
 }
 
+export interface ProviderInfo {
+  name: string
+  auth_type: string
+  source: string
+  connected: boolean
+}
+
+export interface AvailableModel {
+  full_id: string
+  provider: string
+  model: string
+}
+
 const BASE = ""
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -194,8 +207,6 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getModelsCatalog: () => fetchJson<string[]>("/api/models-catalog"),
-
   getModels: (name: string) =>
     fetchJson<ModelConfig[]>(`/api/projects/${name}/models`),
 
@@ -204,5 +215,47 @@ export const api = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model }),
+    }),
+
+  // Provider management
+  getProviders: () =>
+    fetchJson<{ providers: ProviderInfo[]; raw: string }>("/api/providers"),
+
+  getAvailableModels: () =>
+    fetchJson<AvailableModel[]>("/api/providers/models"),
+
+  refreshAvailableModels: () =>
+    fetchJson<{ count: number; models: AvailableModel[] }>(
+      "/api/providers/models/refresh",
+      { method: "POST" },
+    ),
+
+  providerLogin: (provider?: string) =>
+    fetchJson<{
+      success: boolean
+      in_docker: boolean
+      is_windows: boolean
+      github_token_set: boolean
+      login_command: string
+      note: string
+      steps: string[]
+      alternatives: Array<{
+        title: string
+        description: string
+        env_var: string
+        docs_url: string
+      }>
+    }>(
+      "/api/providers/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: provider ?? "" }),
+      },
+    ),
+
+  providerLogout: () =>
+    fetchJson<{ output: string; success: boolean }>("/api/providers/logout", {
+      method: "POST",
     }),
 }

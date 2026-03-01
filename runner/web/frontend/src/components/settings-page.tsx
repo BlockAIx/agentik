@@ -1,3 +1,4 @@
+import { Providers } from "@/components/providers"
 import { GlobalConfig } from "@/components/settings"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -7,9 +8,8 @@ import { ArrowLeft, Settings2, Wifi, WifiOff } from "lucide-react"
 import { Link } from "react-router-dom"
 
 /**
- * Global settings page at /settings — budget limits, token prices, and
- * runner configuration. Project-specific settings (models) live inside
- * each project view.
+ * Global settings page at /settings — provider auth, budget limits,
+ * token prices, and runner configuration.
  */
 export function SettingsPage(): React.JSX.Element {
   const { connected } = useWebSocket()
@@ -46,7 +46,8 @@ export function SettingsPage(): React.JSX.Element {
           </div>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        <Providers />
         <GlobalConfig />
       </main>
     </div>

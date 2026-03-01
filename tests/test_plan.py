@@ -1,10 +1,8 @@
 """Tests for runner.plan — ROADMAP generation from natural language."""
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 
 class TestExtractJson:

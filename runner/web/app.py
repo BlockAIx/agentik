@@ -1,6 +1,7 @@
 """app.py — FastAPI web application for agentik runner dashboard."""
 
 import asyncio
+import io
 import json
 import os
 import re
@@ -50,7 +51,7 @@ _pipeline_lock = threading.Lock()
 _pipeline_running = False
 _pipeline_project: str | None = None
 _pipeline_thread: threading.Thread | None = None
-_pipeline_process: "subprocess.Popen[str] | None" = None
+_pipeline_process: "subprocess.Popen[bytes] | None" = None
 # The main event loop captured at startup — used by background threads to
 # safely schedule coroutines via asyncio.run_coroutine_threadsafe.
 _main_loop: asyncio.AbstractEventLoop | None = None
@@ -418,15 +419,21 @@ async def run_pipeline(name: str, request: Request) -> dict:
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
                 env=env,
             ) as proc:
                 _pipeline_process = proc
                 assert proc.stdout is not None
-                for line in proc.stdout:
-                    clean = _ANSI_RE.sub("", line.rstrip())
+                # Wrap binary stdout with TextIOWrapper so we can use newline=""
+                # which preserves raw \r vs \n terminators. This lets us detect
+                # spinner redraws (\r-only lines) and skip them instead of
+                # rendering each animation frame as a separate log entry.
+                text_stdout = io.TextIOWrapper(
+                    proc.stdout, encoding="utf-8", errors="replace", newline=""
+                )
+                for raw_line in text_stdout:
+                    if raw_line.endswith("\r") and not raw_line.endswith("\r\n"):
+                        continue
+                    clean = _ANSI_RE.sub("", raw_line.rstrip())
                     if clean:
                         broadcast_sync("log_line", {"project": name, "line": clean})
                 proc.wait()
@@ -617,41 +624,195 @@ async def update_model(name: str, agent: str, request: Request) -> dict:
     return {"saved": True}
 
 
-# ── Models catalog (autocomplete) ─────────────────────────────────────────────
-
-_models_catalog_cache: list[str] | None = None
+# ── Provider management (auth & models) ───────────────────────────────────────
 
 
-@app.get("/api/models-catalog")
-def get_models_catalog() -> list[str]:
-    """Return the full models.dev model list for autocomplete.
+def _parse_auth_list(output: str) -> list[dict]:
+    """Parse ``opencode auth list`` output into structured provider entries."""
+    providers: list[dict] = []
+    source: str = "unknown"
 
-    Fetches from https://models.dev/api.json once and caches in memory.
-    The API shape is {provider_id: {models: {model_key: {id, name, ...}}}}.
-    Returns strings in "provider/model" format, sorted alphabetically.
-    Does NOT cache on network failure so the next request retries.
+    for line in output.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # Section headers like "Credentials ~/.local/share/opencode/auth.json"
+        if line.startswith("Credentials") or line.startswith("Environment"):
+            source = "credentials" if "Credentials" in line else "environment"
+            continue
+        # Provider lines start with a bullet: "●  GitHub Copilot oauth"
+        stripped = line.lstrip("●").strip()
+        if stripped and not stripped.startswith(("┌", "│", "└", "─")):
+            parts = stripped.split()
+            if len(parts) >= 1:
+                # e.g. "GitHub Copilot oauth" → name="GitHub Copilot", auth_type="oauth"
+                # e.g. "Amazon Bedrock AWS_ACCESS_KEY_ID" → name="Amazon Bedrock", auth_type="env"
+                # Heuristic: last word is the auth method/env var
+                auth_type = parts[-1] if len(parts) > 1 else "unknown"
+                name = " ".join(parts[:-1]) if len(parts) > 1 else parts[0]
+                providers.append(
+                    {
+                        "name": name,
+                        "auth_type": auth_type,
+                        "source": source,
+                        "connected": True,
+                    }
+                )
+    return providers
+
+
+@app.get("/api/providers")
+def get_providers() -> dict:
+    """List configured authentication providers via ``opencode auth list``."""
+    try:
+        result = subprocess.run(
+            [OPENCODE_CMD, "auth", "list"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        raw = _ANSI_RE.sub("", result.stdout + result.stderr)
+        providers = _parse_auth_list(raw)
+        return {"providers": providers, "raw": raw.strip()}
+    except FileNotFoundError:
+        raise HTTPException(503, "opencode binary not found")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "opencode auth list timed out")
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to list providers: {exc}")
+
+
+_available_models_cache: list[dict] | None = None
+
+
+@app.get("/api/providers/models")
+def get_available_models() -> list[dict]:
+    """List all models available to the user via ``opencode models``.
+
+    Groups by provider. Each entry has provider, model_id, and full_id.
+    Cached in memory after first successful call.
     """
-    global _models_catalog_cache
-    if _models_catalog_cache is not None:
-        return _models_catalog_cache
-
-    import urllib.request  # noqa: PLC0415
+    global _available_models_cache
+    if _available_models_cache is not None:
+        return _available_models_cache
 
     try:
-        with urllib.request.urlopen("https://models.dev/api.json", timeout=10) as resp:
-            data: dict = json.loads(resp.read().decode("utf-8"))
-        ids: list[str] = []
-        for provider_id, provider_obj in data.items():
-            models_dict = (
-                provider_obj.get("models", {}) if isinstance(provider_obj, dict) else {}
+        result = subprocess.run(
+            [OPENCODE_CMD, "models"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        raw = _ANSI_RE.sub("", result.stdout).strip()
+        models: list[dict] = []
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line or "/" not in line:
+                continue
+            provider, _, model = line.partition("/")
+            models.append(
+                {
+                    "full_id": line,
+                    "provider": provider.strip(),
+                    "model": model.strip(),
+                }
             )
-            for model_key in models_dict:
-                ids.append(f"{provider_id}/{model_key}")
-        _models_catalog_cache = sorted(ids)
-    except Exception:  # noqa: BLE001
-        # Do not cache on failure — allow the next request to retry
-        return []
-    return _models_catalog_cache
+        _available_models_cache = models
+        return models
+    except FileNotFoundError:
+        raise HTTPException(503, "opencode binary not found")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "opencode models timed out")
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to list models: {exc}")
+
+
+@app.post("/api/providers/models/refresh")
+def refresh_available_models() -> dict:
+    """Clear cached models and re-fetch."""
+    global _available_models_cache
+    _available_models_cache = None
+    models = get_available_models()
+    return {"count": len(models), "models": models}
+
+
+@app.post("/api/providers/login")
+async def provider_login(request: Request) -> dict:
+    """Return connection instructions for the requested provider.
+
+    ``opencode auth login`` requires an interactive TTY (it renders a
+    selection TUI), so it cannot be driven from the web server process.
+    Instead we detect the runtime environment and return the correct
+    step-by-step instructions so the user can complete auth themselves.
+    """
+    import platform  # noqa: PLC0415
+
+    in_docker = Path("/.dockerenv").exists()
+    is_windows = platform.system() == "Windows"
+
+    # Build provider-specific guidance.
+    if in_docker:
+        cmd = "docker exec -it agentik opencode auth login"
+        note = "Run this on your **host machine** (not inside the container)."
+    else:
+        cmd = "opencode auth login"
+        note = "Run this in any terminal."
+
+    github_token_set = bool(os.environ.get("GITHUB_TOKEN", "").strip())
+
+    return {
+        "success": True,
+        "in_docker": in_docker,
+        "is_windows": is_windows,
+        "github_token_set": github_token_set,
+        "login_command": cmd,
+        "note": note,
+        "steps": [
+            f"Open a terminal and run: `{cmd}`",
+            "Select **GitHub Copilot** from the provider list.",
+            "A device code like `ABCD-1234` will appear — copy it.",
+            "Open https://github.com/login/device in your browser.",
+            "Paste the code and authorize the connection.",
+            "Come back here and click **Refresh** to confirm.",
+        ],
+        "alternatives": [
+            {
+                "title": "GitHub Personal Access Token",
+                "description": "Set GITHUB_TOKEN in your .env file and restart the server.",
+                "env_var": "GITHUB_TOKEN",
+                "docs_url": "https://github.com/settings/tokens",
+            },
+            {
+                "title": "Anthropic API Key",
+                "description": "Set ANTHROPIC_API_KEY in your .env file to use Claude models directly.",
+                "env_var": "ANTHROPIC_API_KEY",
+                "docs_url": "https://console.anthropic.com/settings/keys",
+            },
+            {
+                "title": "OpenAI API Key",
+                "description": "Set OPENAI_API_KEY in your .env file to use GPT models directly.",
+                "env_var": "OPENAI_API_KEY",
+                "docs_url": "https://platform.openai.com/api-keys",
+            },
+        ],
+    }
+
+
+@app.post("/api/providers/logout")
+async def provider_logout() -> dict:
+    """Log out from all providers via ``opencode auth logout``."""
+    try:
+        result = subprocess.run(
+            [OPENCODE_CMD, "auth", "logout"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            input="y\n",  # Confirm logout
+        )
+        raw = _ANSI_RE.sub("", result.stdout + result.stderr).strip()
+        return {"output": raw, "success": result.returncode == 0}
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to logout: {exc}")
 
 
 # ── Global budget config ──────────────────────────────────────────────────────

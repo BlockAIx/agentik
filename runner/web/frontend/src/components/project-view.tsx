@@ -12,27 +12,27 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@/components/ui/tabs"
 import { useWebSocket } from "@/hooks/use-websocket"
-import type { ProjectDetail } from "@/lib/api"
+import type { AvailableModel, ModelConfig, ProjectDetail } from "@/lib/api"
 import { api } from "@/lib/api"
 import {
-    ArrowLeft,
-    Cpu,
-    Eye,
-    FileCode2,
-    FileText,
-    GitBranch,
-    LayoutDashboard,
-    ListChecks,
-    Settings2,
-    Sparkles,
-    Wifi,
-    WifiOff,
+  ArrowLeft,
+  Cpu,
+  Eye,
+  FileCode2,
+  FileText,
+  GitBranch,
+  LayoutDashboard,
+  ListChecks,
+  Settings2,
+  Sparkles,
+  Wifi,
+  WifiOff,
 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
@@ -44,6 +44,8 @@ export function ProjectView(): React.JSX.Element {
   const [detail, setDetail] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [wsRefresh, setWsRefresh] = useState(0)
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([])
+  const [projectModels, setProjectModels] = useState<ModelConfig[]>([])
 
   const { connected } = useWebSocket(() => {
     setWsRefresh((n) => n + 1)
@@ -61,9 +63,31 @@ export function ProjectView(): React.JSX.Element {
     }
   }, [projectName])
 
+  const fetchModels = useCallback(async () => {
+    if (!projectName) return
+    try {
+      const [catalog, configs] = await Promise.all([
+        api.getAvailableModels(),
+        api.getModels(projectName),
+      ])
+      setAvailableModels(catalog)
+      setProjectModels(configs)
+    } catch {
+      // non-fatal — availability info is best-effort
+    }
+  }, [projectName])
+
   useEffect(() => {
     fetchDetail()
   }, [fetchDetail, wsRefresh])
+
+  useEffect(() => {
+    fetchModels()
+  }, [fetchModels])
+
+  const invalidModels = availableModels.length > 0
+    ? projectModels.filter((m) => !availableModels.find((a) => a.full_id === m.model))
+    : []
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -172,7 +196,7 @@ export function ProjectView(): React.JSX.Element {
             </TabsList>
 
             <TabsContent value="overview">
-              <Overview project={detail} />
+              <Overview project={detail} invalidModels={invalidModels} />
             </TabsContent>
             <TabsContent value="graph">
               <Graph project={detail} />
@@ -190,7 +214,11 @@ export function ProjectView(): React.JSX.Element {
               <Generator projectName={projectName} />
             </TabsContent>
             <TabsContent value="models">
-              <Models projectName={projectName} />
+              <Models
+                projectName={projectName}
+                catalog={availableModels}
+                onSaved={fetchModels}
+              />
             </TabsContent>
             <TabsContent value="review">
               <Review projectName={projectName} detail={detail} />
@@ -200,6 +228,7 @@ export function ProjectView(): React.JSX.Element {
                 projectName={projectName}
                 detail={detail}
                 onRefresh={fetchDetail}
+                invalidModels={invalidModels}
               />
             </TabsContent>
           </Tabs>

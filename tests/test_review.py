@@ -1,7 +1,6 @@
 """Tests for runner.review — human-in-the-loop review mode."""
 
 import json
-import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

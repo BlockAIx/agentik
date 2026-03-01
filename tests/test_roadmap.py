@@ -522,3 +522,269 @@ class TestIsDeployTask:
         project.mkdir()
         _write_roadmap(project, _minimal_roadmap())
         assert is_deploy_task("## 999 - Ghost", project) is False
+
+
+# -- get_task_layers -----------------------------------------------------------
+
+
+def _make_layered_project(tmp_path: Path, tasks: list[dict]) -> Path:
+    """Create a project with given tasks and return the project path."""
+    project = tmp_path / "proj"
+    project.mkdir(exist_ok=True)
+    data = {
+        "name": "LayerTest",
+        "ecosystem": "python",
+        "preamble": "",
+        "tasks": tasks,
+    }
+    _write_roadmap(project, data)
+    return project
+
+
+class TestGetTaskLayers:
+    def test_simple_linear(self, tmp_path: Path) -> None:
+        """Linear chain: 1 → 2 → 3, each in its own layer."""
+        from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
+
+        project = _make_layered_project(
+            tmp_path,
+            [
+                {
+                    "id": 1,
+                    "title": "A",
+                    "depends_on": [],
+                    "outputs": ["a.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 2,
+                    "title": "B",
+                    "depends_on": [1],
+                    "outputs": ["b.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 3,
+                    "title": "C",
+                    "depends_on": [2],
+                    "outputs": ["c.py"],
+                    "acceptance": "ok",
+                },
+            ],
+        )
+        tasks = get_tasks(project)
+        graph = parse_task_graph(project)
+        layers = get_task_layers(tasks, graph, project)
+        assert len(layers) == 3
+        assert layers[0] == ["## 001 - A"]
+        assert layers[1] == ["## 002 - B"]
+        assert layers[2] == ["## 003 - C"]
+
+    def test_parallel_tasks(self, tmp_path: Path) -> None:
+        """Two tasks with same deps run in the same layer."""
+        from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
+
+        project = _make_layered_project(
+            tmp_path,
+            [
+                {
+                    "id": 1,
+                    "title": "Root",
+                    "depends_on": [],
+                    "outputs": ["a.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 2,
+                    "title": "Left",
+                    "depends_on": [1],
+                    "outputs": ["b.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 3,
+                    "title": "Right",
+                    "depends_on": [1],
+                    "outputs": ["c.py"],
+                    "acceptance": "ok",
+                },
+            ],
+        )
+        tasks = get_tasks(project)
+        graph = parse_task_graph(project)
+        layers = get_task_layers(tasks, graph, project)
+        assert len(layers) == 2
+        assert layers[0] == ["## 001 - Root"]
+        assert set(layers[1]) == {"## 002 - Left", "## 003 - Right"}
+
+    def test_milestone_alone_in_layer(self, tmp_path: Path) -> None:
+        """A milestone with the same deps as a build task must NOT share a layer."""
+        from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
+
+        project = _make_layered_project(
+            tmp_path,
+            [
+                {
+                    "id": 1,
+                    "title": "Root",
+                    "depends_on": [],
+                    "outputs": ["a.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 2,
+                    "title": "Build",
+                    "depends_on": [1],
+                    "outputs": ["b.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 3,
+                    "title": "Review",
+                    "agent": "milestone",
+                    "depends_on": [1],
+                    "version": "0.1.0",
+                },
+            ],
+        )
+        tasks = get_tasks(project)
+        graph = parse_task_graph(project)
+        layers = get_task_layers(tasks, graph, project)
+        # Build must come before the milestone
+        assert len(layers) == 3
+        assert layers[0] == ["## 001 - Root"]
+        assert layers[1] == ["## 002 - Build"]
+        assert layers[2] == ["## 003 - Review"]
+
+    def test_milestone_after_parallel_work(self, tmp_path: Path) -> None:
+        """Milestone runs AFTER all parallel non-milestone candidates."""
+        from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
+
+        project = _make_layered_project(
+            tmp_path,
+            [
+                {
+                    "id": 1,
+                    "title": "Root",
+                    "depends_on": [],
+                    "outputs": ["a.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 2,
+                    "title": "Left",
+                    "depends_on": [1],
+                    "outputs": ["b.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 3,
+                    "title": "Right",
+                    "depends_on": [1],
+                    "outputs": ["c.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 4,
+                    "title": "Gate",
+                    "agent": "milestone",
+                    "depends_on": [1],
+                    "version": "0.1.0",
+                },
+            ],
+        )
+        tasks = get_tasks(project)
+        graph = parse_task_graph(project)
+        layers = get_task_layers(tasks, graph, project)
+        # Layer 0: Root, Layer 1: Left+Right (parallel), Layer 2: Gate (alone)
+        assert len(layers) == 3
+        assert layers[0] == ["## 001 - Root"]
+        assert set(layers[1]) == {"## 002 - Left", "## 003 - Right"}
+        assert layers[2] == ["## 004 - Gate"]
+
+    def test_milestone_never_shares_layer(self, tmp_path: Path) -> None:
+        """Even with only milestone candidates, each gets its own layer."""
+        from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
+
+        project = _make_layered_project(
+            tmp_path,
+            [
+                {
+                    "id": 1,
+                    "title": "Root",
+                    "depends_on": [],
+                    "outputs": ["a.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 2,
+                    "title": "M1",
+                    "agent": "milestone",
+                    "depends_on": [1],
+                    "version": "0.1.0",
+                },
+                {
+                    "id": 3,
+                    "title": "M2",
+                    "agent": "milestone",
+                    "depends_on": [1],
+                    "version": "0.2.0",
+                },
+            ],
+        )
+        tasks = get_tasks(project)
+        graph = parse_task_graph(project)
+        layers = get_task_layers(tasks, graph, project)
+        assert len(layers) == 3
+        assert layers[0] == ["## 001 - Root"]
+        # Each milestone in its own separate layer
+        assert len(layers[1]) == 1
+        assert len(layers[2]) == 1
+        milestone_layers = {layers[1][0], layers[2][0]}
+        assert milestone_layers == {"## 002 - M1", "## 003 - M2"}
+
+    def test_work_after_milestone(self, tmp_path: Path) -> None:
+        """Tasks that depend on a milestone are in a later layer."""
+        from runner.roadmap import get_task_layers, get_tasks, parse_task_graph
+
+        project = _make_layered_project(
+            tmp_path,
+            [
+                {
+                    "id": 1,
+                    "title": "Root",
+                    "depends_on": [],
+                    "outputs": ["a.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 2,
+                    "title": "Build",
+                    "depends_on": [1],
+                    "outputs": ["b.py"],
+                    "acceptance": "ok",
+                },
+                {
+                    "id": 3,
+                    "title": "Gate",
+                    "agent": "milestone",
+                    "depends_on": [2],
+                    "version": "0.1.0",
+                },
+                {
+                    "id": 4,
+                    "title": "Phase2",
+                    "depends_on": [3],
+                    "outputs": ["d.py"],
+                    "acceptance": "ok",
+                },
+            ],
+        )
+        tasks = get_tasks(project)
+        graph = parse_task_graph(project)
+        layers = get_task_layers(tasks, graph, project)
+        assert len(layers) == 4
+        assert layers[0] == ["## 001 - Root"]
+        assert layers[1] == ["## 002 - Build"]
+        assert layers[2] == ["## 003 - Gate"]
+        assert layers[3] == ["## 004 - Phase2"]

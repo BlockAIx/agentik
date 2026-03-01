@@ -744,7 +744,6 @@ class TestGenerateProjectAgentsMd:
 
         project = self._make_project(tmp_path)
         generate_project_agents_md(project)
-        first = (project / "AGENTS.md").read_text(encoding="utf-8")
         generate_project_agents_md(project)
         second = (project / "AGENTS.md").read_text(encoding="utf-8")
         # Timestamps differ so content will differ slightly — but the heading

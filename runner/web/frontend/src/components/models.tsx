@@ -1,77 +1,66 @@
 import { ModelCombobox } from "@/components/model-combobox"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import type { ModelConfig } from "@/lib/api"
+import type { AvailableModel, ModelConfig } from "@/lib/api"
 import { api } from "@/lib/api"
 import {
-  Cpu,
-  Loader2,
-  Save,
+    AlertTriangle,
+    Cpu,
+    Loader2,
 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
-export function Models({ projectName }: { projectName: string }) {
+export function Models({
+  projectName,
+  catalog,
+  onSaved,
+}: {
+  projectName: string
+  catalog: AvailableModel[]
+  onSaved: () => void
+}) {
   const [models, setModels] = useState<ModelConfig[]>([]);
-  const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<string[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
 
   const fetchModels = useCallback(async () => {
     try {
       const data = await api.getModels(projectName);
       setModels(data);
-      const initial: Record<string, string> = {};
-      for (const m of data) {
-        initial[m.agent] = m.model;
-      }
-      setEdits(initial);
     } catch (e) {
       setError(String(e));
     }
   }, [projectName]);
 
-  // Fetch model catalog once on mount.
-  useEffect(() => {
-    api.getModelsCatalog()
-      .then(setCatalog)
-      .catch(() => {
-        // Catalog is optional — autocomplete just won't show suggestions.
-      })
-      .finally(() => setCatalogLoading(false));
-  }, []);
-
   useEffect(() => {
     fetchModels();
   }, [fetchModels]);
 
-  const handleSave = async (agent: string) => {
-    const model = edits[agent];
+  /** Auto-save whenever the user picks a model from the combobox. */
+  const handleAutoSave = useCallback(async (agent: string, model: string) => {
     if (!model) return;
     setSaving((s) => ({ ...s, [agent]: true }));
     setError(null);
-    setMessage(null);
     try {
       await api.updateModel(projectName, agent, model);
-      setMessage(`Model for "${agent}" saved`);
       await fetchModels();
+      onSaved();
     } catch (e) {
       setError(String(e));
     } finally {
       setSaving((s) => ({ ...s, [agent]: false }));
     }
-  };
+  }, [projectName, fetchModels, onSaved]);
 
-  const isDirty = (agent: string) => {
-    const original = models.find((m) => m.agent === agent);
-    return original ? edits[agent] !== original.model : false;
-  };
+  /** True when a model value is configured but not present in the connected catalog. */
+  const isInvalid = (value: string) =>
+    catalog.length > 0 && !!value && !catalog.find((c) => c.full_id === value);
 
-  // Group agents for display.
+  // Derive current values from the saved models (source of truth after each save).
+  const values: Record<string, string> = {};
+  for (const m of models) values[m.agent] = m.model;
+
   const buildAgents = models.filter((m) =>
     ["build", "fix", "test"].includes(m.agent),
   );
@@ -86,36 +75,27 @@ export function Models({ projectName }: { projectName: string }) {
           {error}
         </div>
       )}
-      {message && (
-        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm text-green-400">
-          {message}
-        </div>
-      )}
 
       <AgentGroup
         title="Build Agents"
         description="Core agents that write and fix code"
         agents={buildAgents}
-        edits={edits}
-        setEdits={setEdits}
+        values={values}
         saving={saving}
-        isDirty={isDirty}
-        onSave={handleSave}
+        isInvalid={isInvalid}
+        onSave={handleAutoSave}
         catalog={catalog}
-        loading={catalogLoading}
       />
 
       <AgentGroup
         title="Support Agents"
         description="Documentation, planning, architecture, and review"
         agents={supportAgents}
-        edits={edits}
-        setEdits={setEdits}
+        values={values}
         saving={saving}
-        isDirty={isDirty}
-        onSave={handleSave}
+        isInvalid={isInvalid}
+        onSave={handleAutoSave}
         catalog={catalog}
-        loading={catalogLoading}
       />
 
       <Card>
@@ -127,10 +107,11 @@ export function Models({ projectName }: { projectName: string }) {
             <code className="bg-muted px-1 rounded">provider/model-name</code>{" "}
             (e.g.{" "}
             <code className="bg-muted px-1 rounded">
-              github-copilot/gemini-3.1-pro-preview
+              github-copilot/claude-sonnet-4-5
             </code>
-            ). Model errors will surface when the pipeline runs — check task
-            logs for details.
+            ). Selections are saved immediately. Models shown in{" "}
+            <span className="text-destructive">red</span> are not available
+            through your connected providers.
           </p>
         </CardContent>
       </Card>
@@ -142,24 +123,20 @@ function AgentGroup({
   title,
   description,
   agents,
-  edits,
-  setEdits,
+  values,
   saving,
-  isDirty,
+  isInvalid,
   onSave,
   catalog,
-  loading,
 }: {
   title: string;
   description: string;
   agents: ModelConfig[];
-  edits: Record<string, string>;
-  setEdits: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  values: Record<string, string>;
   saving: Record<string, boolean>;
-  isDirty: (agent: string) => boolean;
-  onSave: (agent: string) => void;
-  catalog: string[];
-  loading: boolean;
+  isInvalid: (value: string) => boolean;
+  onSave: (agent: string, model: string) => void;
+  catalog: AvailableModel[];
 }) {
   if (agents.length === 0) return null;
 
@@ -173,44 +150,41 @@ function AgentGroup({
         <p className="text-xs text-muted-foreground">{description}</p>
       </CardHeader>
       <CardContent className="space-y-3">
-        {agents.map((m, i) => (
+        {agents.map((m, i) => {
+          const val = values[m.agent] || "";
+          const invalid = isInvalid(val);
+          return (
             <div key={m.agent}>
               {i > 0 && <Separator className="my-3" />}
               <div className="flex items-center gap-3">
                 <div className="w-24 shrink-0">
-                  <Badge variant="outline" className="text-xs font-mono">
+                  <Badge
+                    variant="outline"
+                    className={`text-xs font-mono ${invalid ? "border-destructive text-destructive" : ""}`}
+                  >
                     {m.agent}
                   </Badge>
                 </div>
                 <ModelCombobox
-                  value={edits[m.agent] || ""}
-                  onChange={(val) =>
-                    setEdits((prev) => ({
-                      ...prev,
-                      [m.agent]: val,
-                    }))
-                  }
+                  value={val}
+                  onChange={(newVal) => onSave(m.agent, newVal)}
                   models={catalog}
-                  loading={loading}
+                  invalid={invalid}
                   className="flex-1"
                 />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onSave(m.agent)}
-                  disabled={saving[m.agent] || !isDirty(m.agent)}
-                  className="h-8 px-2"
-                >
-                  {saving[m.agent] ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Save className="h-3.5 w-3.5" />
-                  )}
-                </Button>
+                {saving[m.agent] ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+                ) : invalid ? (
+                  <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                ) : (
+                  <div className="w-3.5 shrink-0" />
+                )}
               </div>
             </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );
 }
+

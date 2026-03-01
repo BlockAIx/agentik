@@ -1,6 +1,5 @@
 """graph_html.py — Generate an interactive HTML dependency graph using Mermaid.js."""
 
-import json
 import re
 import webbrowser
 from pathlib import Path
@@ -37,7 +36,9 @@ def generate_graph_html(project_dir: Path, open_browser: bool = True) -> Path:
     task_tokens: dict[str, int] = {}
     for session in budget.get("sessions", []):
         task_name = session.get("task", "")
-        task_tokens[task_name] = task_tokens.get(task_name, 0) + session.get("tokens", 0)
+        task_tokens[task_name] = task_tokens.get(task_name, 0) + session.get(
+            "tokens", 0
+        )
 
     # Build Mermaid graph definition.
     mermaid_lines = ["graph TD"]
@@ -62,17 +63,23 @@ def generate_graph_html(project_dir: Path, open_browser: bool = True) -> Path:
 
         if task in done_set:
             mermaid_lines.append(f'    {node_id}["{label}{agent_str}{token_str}"]')
-            mermaid_lines.append(f"    style {node_id} fill:#22c55e,stroke:#16a34a,color:#fff")
+            mermaid_lines.append(
+                f"    style {node_id} fill:#22c55e,stroke:#16a34a,color:#fff"
+            )
         else:
             # Check if ready.
             deps = graph.get(task, [])
             all_deps_done = all(d in done_set for d in deps)
             if all_deps_done:
                 mermaid_lines.append(f'    {node_id}["{label}{agent_str}{token_str}"]')
-                mermaid_lines.append(f"    style {node_id} fill:#eab308,stroke:#ca8a04,color:#000")
+                mermaid_lines.append(
+                    f"    style {node_id} fill:#eab308,stroke:#ca8a04,color:#000"
+                )
             else:
                 mermaid_lines.append(f'    {node_id}["{label}{agent_str}{token_str}"]')
-                mermaid_lines.append(f"    style {node_id} fill:#6b7280,stroke:#4b5563,color:#fff")
+                mermaid_lines.append(
+                    f"    style {node_id} fill:#6b7280,stroke:#4b5563,color:#fff"
+                )
 
     # Add edges.
     for task in all_tasks:
@@ -98,10 +105,9 @@ def generate_graph_html(project_dir: Path, open_browser: bool = True) -> Path:
                 logs = sorted(task_log_dir.glob("*.log"))
                 if logs:
                     log_links[task_log_dir.name] = [
-                        l.relative_to(project_dir).as_posix() for l in logs
+                        log_path.relative_to(project_dir).as_posix()
+                        for log_path in logs
                     ]
-
-    log_links_json = json.dumps(log_links)
 
     html = f"""\
 <!DOCTYPE html>

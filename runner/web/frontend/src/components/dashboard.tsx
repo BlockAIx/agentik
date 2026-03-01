@@ -322,7 +322,7 @@ function ProjectCard({
               {project.total_calls} calls
             </span>
             <Badge variant="outline" className="text-xs">
-              {project.status}
+              {isRunning ? "running" : project.status}
             </Badge>
           </div>
         </CardContent>

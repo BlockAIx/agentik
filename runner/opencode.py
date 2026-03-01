@@ -8,15 +8,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
-class ModelConfigError(Exception):
-    """Raised when the agent fails due to a model configuration problem.
-
-    These errors are non-retriable: retrying with the same model config will
-    always fail.  The pipeline should stop immediately and surface the error.
-    """
-
-
 import questionary
 
 from runner.config import (
@@ -59,6 +50,15 @@ from runner.workspace import (
     src_dir,
     tests_dir,
 )
+
+
+class ModelConfigError(Exception):
+    """Raised when the agent fails due to a model configuration problem.
+
+    These errors are non-retriable: retrying with the same model config will
+    always fail.  The pipeline should stop immediately and surface the error.
+    """
+
 
 # ── Subprocess tee helper ──────────────────────────────────────────────────────
 # Matches all ANSI/VT100 escape sequences (CSI, OSC, and standalone ESC codes).
@@ -172,7 +172,7 @@ def _check_model_error(log_path: Path) -> None:
         if match:
             # Extract a one-line summary from the matched region.
             line = next(
-                (l.strip() for l in tail.splitlines() if pattern.search(l)),
+                (ln.strip() for ln in tail.splitlines() if pattern.search(ln)),
                 match.group(),
             )
             raise ModelConfigError(f"Model configuration error (non-retriable): {line}")

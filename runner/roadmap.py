@@ -248,7 +248,14 @@ def get_task_layers(
     graph: dict[str, list[str]],
     project_dir: Path,
 ) -> list[list[str]]:
-    """Group tasks into topological layers. Milestones are placed in their own individual layers."""
+    """Group tasks into topological layers.
+
+    Non-milestone tasks are grouped into parallel layers first.
+    Milestone tasks are always placed alone in their own layer and only
+    after all non-milestone candidates in the same topological wave have
+    been placed.  This guarantees milestones never share a layer with
+    other tasks and always act as sequential barrier points.
+    """
     layers: list[list[str]] = []
     remaining = list(all_tasks)
     placed: set[str] = set()
@@ -260,15 +267,16 @@ def get_task_layers(
             # Fallback for cycles or disconnected graphs
             candidates = list(remaining)
 
-        milestones = [t for t in candidates if is_milestone_task(t, project_dir)]
         non_milestones = [
             t for t in candidates if not is_milestone_task(t, project_dir)
         ]
 
-        if milestones:
-            layer = [milestones[0]]
-        else:
+        if non_milestones:
+            # Always schedule regular work before milestones.
             layer = non_milestones
+        else:
+            # Only milestones are candidates — place exactly one per layer.
+            layer = [candidates[0]]
 
         layers.append(layer)
         placed.update(layer)
