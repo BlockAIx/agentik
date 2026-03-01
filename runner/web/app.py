@@ -448,17 +448,23 @@ _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _ASSETS_DIR = _STATIC_DIR / "assets"
 
 
+def _read_index() -> str:
+    """Return the React index.html content, or fallback HTML."""
+    index = _STATIC_DIR / "index.html"
+    if index.is_file():
+        return index.read_text(encoding="utf-8")
+    return _FALLBACK_HTML
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard() -> HTMLResponse:
     """Serve the React SPA index.html, falling back to inline HTML."""
-    index = _STATIC_DIR / "index.html"
-    if index.is_file():
-        return HTMLResponse(index.read_text(encoding="utf-8"))
-    return HTMLResponse(_FALLBACK_HTML)
+    return HTMLResponse(_read_index())
 
 
-# Mount static assets BEFORE the catch-all so /assets/* is handled by
-# StaticFiles (which sets correct MIME types) rather than spa_fallback.
+# Mount static assets with correct MIME types.  Mounts are checked by
+# Starlette *after* explicit routes, so no catch-all route should exist
+# that would shadow these paths.
 if _ASSETS_DIR.is_dir():
     app.mount(
         "/assets",
@@ -467,13 +473,18 @@ if _ASSETS_DIR.is_dir():
     )
 
 
-@app.get("/{path:path}", response_model=None)
-def spa_fallback(path: str) -> HTMLResponse:
-    """SPA catch-all: fall back to index.html for client-side routing."""
-    index = _STATIC_DIR / "index.html"
-    if index.is_file():
-        return HTMLResponse(index.read_text(encoding="utf-8"))
-    return HTMLResponse(_FALLBACK_HTML)
+# SPA fallback: return index.html for any unmatched GET request (client-side
+# routing).  Using an exception handler instead of a catch-all route avoids
+# shadowing the /assets StaticFiles mount.
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _spa_or_error(request: Request, exc: StarletteHTTPException):  # type: ignore[override]
+    """Return index.html for 404 GETs (SPA routing), otherwise raise."""
+    if exc.status_code == 404 and request.method == "GET":
+        return HTMLResponse(_read_index())
+    return HTMLResponse(content=str(exc.detail), status_code=exc.status_code)
 
 
 def start_server(host: str = "127.0.0.1", port: int = 8420) -> None:
