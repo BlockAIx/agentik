@@ -413,8 +413,13 @@ def _load_opencode(project_dir: Path) -> tuple[dict, Path | None]:
     for candidate in [project_dir / "opencode.jsonc", Path("opencode.jsonc")]:
         if candidate.exists():
             text = candidate.read_text(encoding="utf-8")
-            # Strip single-line comments (// ...) for JSON parsing.
-            cleaned = re.sub(r"//.*$", "", text, flags=re.MULTILINE)
+            # Strip single-line comments but preserve // inside quoted strings.
+            cleaned = re.sub(
+                r'"(?:[^"\\]|\\.)*"|//.*$',
+                lambda m: m.group() if m.group().startswith('"') else "",
+                text,
+                flags=re.MULTILINE,
+            )
             return json.loads(cleaned), candidate
     return {}, None
 
