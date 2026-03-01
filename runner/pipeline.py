@@ -36,6 +36,7 @@ from runner.state import (
     load_project_budget,
     load_runner_state,
     mark_done,
+    save_parallel_batch,
     save_runner_state,
     task_done,
 )
@@ -331,6 +332,7 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
         _console.print(f"  [dim]→ {t}[/]")
 
     check_monthly_budget(project_dir=project_dir)
+    save_parallel_batch(batch, project_dir)  # expose to web UI
 
     # Pre-scaffold ecosystem configs for all tasks in the batch.
     for task in batch:

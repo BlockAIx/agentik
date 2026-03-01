@@ -44,6 +44,7 @@ export interface ProjectDetail {
   }
   state: {
     current_task: string | null
+    running_tasks: string[]
     attempt: number
     completed: number
     total: number

@@ -263,6 +263,11 @@ def get_project(name: str) -> dict:
                 if _pipeline_running and _pipeline_project == name
                 else None
             ),
+            "running_tasks": (
+                state.get("running_tasks", [])
+                if _pipeline_running and _pipeline_project == name
+                else []
+            ),
             "attempt": state.get("attempt", 0),
             "completed": len(done_set),
             "total": len(all_tasks),

@@ -40,6 +40,12 @@ export function Overview({ project, invalidModels }: OverviewProps) {
   const currentTaskInfo = state.current_task
     ? tasks.find((t) => t.heading === state.current_task)
     : null;
+
+  // For parallel builds, resolve all concurrently-running task infos.
+  const runningTaskInfos = (state.running_tasks ?? [])
+    .map((h) => tasks.find((t) => t.heading === h))
+    .filter((t): t is NonNullable<typeof t> => t !== undefined);
+  const isParallel = runningTaskInfos.length > 1;
   const nextMilestone = tasks.find(
     (t) => t.agent === "milestone" && t.status !== "done",
   );
@@ -74,13 +80,40 @@ export function Overview({ project, invalidModels }: OverviewProps) {
         </div>
       )}
 
-      {currentTaskInfo && (
+      {/* Parallel batch banner */}
+      {isParallel && (
+        <div className="p-3 border border-success/20 bg-success/5 rounded-md space-y-2 text-sm">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
+            </span>
+            <span className="text-xs font-medium text-success">Running</span>
+            <span className="text-xs text-muted-foreground">{runningTaskInfos.length} tasks in parallel</span>
+          </div>
+          <div className="flex flex-wrap gap-2 pl-5">
+            {runningTaskInfos.map((t) => (
+              <div key={t.id} className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-xs">
+                <span className="font-mono text-muted-foreground">#{t.id}</span>
+                <span className="font-medium">{t.title}</span>
+                <Badge variant="outline" className="text-[10px] h-4 px-1.5">
+                  {t.agent}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Single task banner */}
+      {!isParallel && currentTaskInfo && (
         <div className="p-3 border border-success/20 bg-success/5 rounded-md flex items-center gap-3 text-sm">
           <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
           </span>
           <span className="text-xs font-medium text-success shrink-0">Running</span>
+          <span className="font-mono text-xs text-muted-foreground shrink-0">#{currentTaskInfo.id}</span>
           <span className="font-medium truncate">{currentTaskInfo.title}</span>
           <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0">
             {currentTaskInfo.agent}

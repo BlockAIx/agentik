@@ -259,6 +259,8 @@ def _raw_state(project_dir: Path) -> dict:
         "task_durations": data.get("task_durations", []),
         # Tasks that failed after max attempts (populated by rollback module).
         "failed": data.get("failed", []),
+        # Parallel batch headings currently building (populated by save_parallel_batch).
+        "running_tasks": data.get("running_tasks", []),
     }
 
 
@@ -267,6 +269,17 @@ def _write_state(project_dir: Path, state: dict) -> None:
     runner_state_path(project_dir).write_text(
         json.dumps(state, indent=2), encoding="utf-8"
     )
+
+
+def save_parallel_batch(batch: list[str], project_dir: Path) -> None:
+    """Record parallel batch headings in state so the web UI can display them.
+
+    Call at the start of a parallel build pass with the full batch, and again
+    with an empty list (or rely on individual mark_done calls) to clear.
+    """
+    state = _raw_state(project_dir)
+    state["running_tasks"] = list(batch)
+    _write_state(project_dir, state)
 
 
 def save_runner_state(
@@ -335,4 +348,9 @@ def mark_done(task: str, project_dir: Path) -> None:
     state["attempt"] = 0
     state["fix_logs"] = None
     state["task_started_at"] = None
+    # Remove this task from the parallel running list if present.
+    running = list(state.get("running_tasks", []))
+    if task in running:
+        running.remove(task)
+    state["running_tasks"] = running
     _write_state(project_dir, state)
