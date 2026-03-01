@@ -579,11 +579,10 @@ async def update_model(name: str, agent: str, request: Request) -> dict:
     if not new_model:
         raise HTTPException(400, "Model name is required")
 
-    config, config_path = _load_opencode(project_dir)
-    if config_path is None:
-        # Create project-level config.
-        config_path = project_dir / "opencode.jsonc"
-        config = {"model": new_model, "agent": {}}
+    config, _ = _load_opencode(project_dir)
+    # Always write to the project-level file — the workspace root opencode.jsonc
+    # is read-only inside Docker and must never be written to.
+    config_path = project_dir / "opencode.jsonc"
 
     if "agent" not in config:
         config["agent"] = {}

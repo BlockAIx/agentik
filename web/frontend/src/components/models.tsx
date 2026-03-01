@@ -76,7 +76,7 @@ export function Models({
       />
 
       <Card>
-        <CardContent className="pt-4">
+        <CardContent>
           <p className="text-xs text-muted-foreground">
             Models are stored in the project&apos;s{" "}
             <code className="bg-muted px-1 rounded">opencode.jsonc</code>.
