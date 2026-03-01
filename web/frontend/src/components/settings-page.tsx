@@ -7,8 +7,7 @@ import { Settings2 } from "lucide-react"
 export function SettingsPage(): React.JSX.Element {
   return (
     <Layout
-      backTo="/"
-      backLabel="Dashboard"
+      historyBack
       title="Global Settings"
       badge={<Settings2 className="h-5 w-5 text-muted-foreground" />}
     >

@@ -34,7 +34,7 @@ export function Controls({
   const [logs, setLogs] = useState<string[]>([])
   const [verbose, setVerbose] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const logEndRef = useRef<HTMLDivElement>(null)
+  const logContainerRef = useRef<HTMLDivElement>(null)
 
   const { data: pipeStatus } = usePipelineStatus()
   const pipelineActive = pipeStatus?.running ?? false
@@ -64,7 +64,8 @@ export function Controls({
   useEffect(() => useWsStore.getState().subscribe(handleWs), [handleWs])
 
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const el = logContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [logs])
 
   const handleRun = async () => {
@@ -236,7 +237,7 @@ export function Controls({
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="bg-zinc-950 rounded-b-lg font-mono text-xs text-green-400 h-115 overflow-y-auto p-3 border-t border-border">
+          <div ref={logContainerRef} className="bg-zinc-950 rounded-b-lg font-mono text-xs text-green-400 h-115 overflow-y-auto p-3 border-t border-border">
             {logs.length === 0 ? (
               <span className="text-zinc-500">
                 {pipelineActive
@@ -253,7 +254,6 @@ export function Controls({
                 </div>
               ))
             )}
-            <div ref={logEndRef} />
           </div>
         </CardContent>
       </Card>
