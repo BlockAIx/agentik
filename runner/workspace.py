@@ -349,10 +349,14 @@ def install_project_dependencies(project_dir: Path) -> None:
 
 
 def _sync_opencode_config(project_dir: Path) -> None:
-    """Copy workspace ``opencode.jsonc`` into *project_dir* for agent sandboxing."""
+    """Copy workspace ``opencode.jsonc`` into *project_dir* on first use only.
+
+    Skips the copy if a project-level file already exists so that model
+    customisations saved via the web UI are not overwritten on subsequent runs.
+    """
     src = Path("opencode.jsonc")
     dst = project_dir / "opencode.jsonc"
-    if src.exists():
+    if src.exists() and not dst.exists():
         dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
 
 
@@ -387,7 +391,8 @@ target/
 .env.*
 !.env.example
 
-# Runner-managed: copied from workspace opencode.jsonc at each startup.
+# Runner-managed: seeded from workspace opencode.jsonc on first project run.
+# Editing this file (e.g. via the web UI) is preserved across pipeline runs.
 opencode.jsonc
 
 # Runner agent logs (per-invocation; auto-generated)
