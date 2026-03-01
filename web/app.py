@@ -255,7 +255,14 @@ def get_project(name: str) -> dict:
             "sessions": budget.get("sessions", [])[-50:],  # Last 50 sessions.
         },
         "state": {
-            "current_task": state.get("current_task"),
+            # Only expose current_task when the pipeline is actively running for
+            # this project — the field persists on disk if the pipeline was killed
+            # mid-task, which would otherwise show a stale "Running" banner.
+            "current_task": (
+                state.get("current_task")
+                if _pipeline_running and _pipeline_project == name
+                else None
+            ),
             "attempt": state.get("attempt", 0),
             "completed": len(done_set),
             "total": len(all_tasks),
