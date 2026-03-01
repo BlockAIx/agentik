@@ -19,6 +19,7 @@ import {
   useAvailableModels,
   useInvalidateProject,
   useModels,
+  usePipelineStatus,
   useProject,
 } from "@/hooks/use-queries"
 import { useWsStore } from "@/stores/ws-store"
@@ -66,7 +67,10 @@ export function ProjectView(): React.JSX.Element {
     [navigate, projectName],
   )
 
-  const { data: detail, isLoading } = useProject(projectName)
+  const { data: pipeStatus } = usePipelineStatus()
+  const pipelineActive = !!(pipeStatus?.running && pipeStatus.project === projectName)
+
+  const { data: detail, isLoading } = useProject(projectName, pipelineActive)
   const { data: availableModels = [] } = useAvailableModels()
   const { data: projectModels = [] } = useModels(projectName)
   const invalidate = useInvalidateProject()

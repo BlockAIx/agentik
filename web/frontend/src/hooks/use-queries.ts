@@ -33,11 +33,15 @@ export function useProjects() {
   })
 }
 
-export function useProject(name: string) {
+export function useProject(name: string, pipelineActive?: boolean) {
   return useQuery({
     queryKey: keys.project(name),
     queryFn: ({ signal }) => api.getProject(name, signal),
     enabled: !!name,
+    refetchOnMount: "always",
+    // Poll every 3 s while the pipeline is running so the overview banner,
+    // progress bar and task statuses stay current even between WS log events.
+    refetchInterval: pipelineActive ? 3_000 : false,
   })
 }
 

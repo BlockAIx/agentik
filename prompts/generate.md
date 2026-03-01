@@ -13,6 +13,14 @@ the code, writes tests, and runs static checks — all automatically. Your
 ROADMAP must be precise enough that these agents produce correct, working code
 without human intervention.
 
+**Respect the user's choices.** If the project description specifies a tech
+stack, libraries, frameworks, or architectural patterns (e.g. "use Flask",
+"React with Tailwind", "SQLAlchemy + Alembic", "monorepo with pnpm
+workspaces"), you **must** use exactly those technologies. Do not substitute
+alternatives, omit requested libraries, or add competing ones. Wire the chosen
+stack into the root task's manifest, configuration files, and preamble so every
+subsequent task builds on it.
+
 **Output ONLY valid JSON** — no markdown fences, no commentary, no explanation.
 The output must pass `python check_roadmap.py` with zero errors.
 

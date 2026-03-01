@@ -23,6 +23,11 @@
   - No `Example:`, `Note:`, or `Raises:` sections.
 - Inline comments only on genuinely non-obvious lines; skip anything
   self-explanatory.
+- **Maintain `.gitignore`** — ensure a `.gitignore` exists at the project root
+  and is kept up to date. Any file or directory that should not be tracked by
+  git (generated artefacts, dependency caches, secrets, editor/OS metadata,
+  test output, logs) must have an entry. Add entries for any new artefacts
+  introduced by this task.
 
 ## Post-edit checklist
 
