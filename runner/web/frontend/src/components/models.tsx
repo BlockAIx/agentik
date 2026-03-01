@@ -241,22 +241,44 @@ function AgentGroup({
                 </Button>
               </div>
               {result && (
-                <div className="mt-1 ml-27 flex items-center gap-2 text-xs">
+                <div className="mt-1 ml-27 text-xs">
                   {result.ok ? (
-                    <>
+                    <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                       <span className="text-green-500">
                         Connected
                         {result.latency_ms != null && ` (${result.latency_ms}ms)`}
                       </span>
-                    </>
+                    </div>
+                  ) : result.error?.includes("not found on PATH") ? (
+                    <div className="mt-1 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+                      <div className="flex items-center gap-2 text-yellow-500">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        <span>opencode CLI not found on PATH</span>
+                      </div>
+                      <p className="mt-1 text-muted-foreground ml-5.5">
+                        Install it with:{" "}
+                        <code className="bg-muted px-1 rounded">
+                          go install github.com/opencode-ai/opencode@latest
+                        </code>{" "}
+                        or download from{" "}
+                        <a
+                          href="https://opencode.ai"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-400 underline"
+                        >
+                          opencode.ai
+                        </a>
+                      </p>
+                    </div>
                   ) : (
-                    <>
+                    <div className="flex items-center gap-2">
                       <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
                       <span className="text-destructive">
                         {result.error || "Failed"}
                       </span>
-                    </>
+                    </div>
                   )}
                 </div>
               )}

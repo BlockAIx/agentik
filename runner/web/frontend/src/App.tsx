@@ -1,45 +1,45 @@
-import { Controls } from "@/components/controls";
-import { Generator } from "@/components/generator";
-import { Graph } from "@/components/graph";
-import { Logs } from "@/components/logs";
-import { Models } from "@/components/models";
-import { Overview } from "@/components/overview";
-import { Review } from "@/components/review";
-import { RoadmapEditor } from "@/components/roadmap-editor";
-import { Tasks } from "@/components/tasks";
-import { Badge } from "@/components/ui/badge";
+import { Controls } from "@/components/controls"
+import { Generator } from "@/components/generator"
+import { Graph } from "@/components/graph"
+import { Logs } from "@/components/logs"
+import { Models } from "@/components/models"
+import { Overview } from "@/components/overview"
+import { Review } from "@/components/review"
+import { RoadmapEditor } from "@/components/roadmap-editor"
+import { Tasks } from "@/components/tasks"
+import { Badge } from "@/components/ui/badge"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/components/ui/tabs";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useWebSocket } from "@/hooks/use-websocket";
-import type { GlobalBudget, ProjectDetail, ProjectSummary } from "@/lib/api";
-import { api } from "@/lib/api";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { useWebSocket } from "@/hooks/use-websocket"
+import type { GlobalBudget, ProjectDetail, ProjectSummary } from "@/lib/api"
+import { api } from "@/lib/api"
 import {
-    Cpu,
-    Eye,
-    FileCode2,
-    FileText,
-    GitBranch,
-    LayoutDashboard,
-    ListChecks,
-    Settings2,
-    Sparkles,
-    Wifi,
-    WifiOff,
-} from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+  Cpu,
+  Eye,
+  FileCode2,
+  FileText,
+  GitBranch,
+  LayoutDashboard,
+  ListChecks,
+  Settings2,
+  Sparkles,
+  Wifi,
+  WifiOff,
+} from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 
 export default function App(): React.JSX.Element {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);

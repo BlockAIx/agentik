@@ -537,7 +537,7 @@ def test_model(name: str, agent: str) -> dict:
             "agent": agent,
             "model": model,
             "ok": False,
-            "error": "opencode CLI not found on PATH",
+            "error": "opencode CLI not found on PATH. Install with: go install github.com/opencode-ai/opencode@latest",
             "latency_ms": None,
         }
     except subprocess.TimeoutExpired:
