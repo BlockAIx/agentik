@@ -199,6 +199,17 @@ files, run `git log`, `git diff`, `grep`, etc. for review purposes. They always
 run alone (never in parallel). A milestone depends on **all preceding tasks**
 it is reviewing.
 
+**If the user's project description explicitly names milestones** (e.g. "v0.1
+should have X", "milestone: core engine done", "release 1.0 after Y"), you
+**must** honour them exactly:
+- Treat each named milestone as a hard architectural boundary.
+- Place all features belonging to that milestone before it in the DAG.
+- Use the user-provided name/version as the milestone `title` and `version`.
+- Do not merge, drop, reorder, or rename user-specified milestones.
+- Where the user did not specify versions, derive semver tags that reflect the
+  described scope (e.g. `"0.1.0"` for an MVP milestone, `"1.0.0"` for a
+  production-ready release).
+
 Give each milestone a `version` field for the semver tag. Do not include
 `outputs` or `acceptance` on milestone tasks.
 
@@ -242,5 +253,11 @@ The validator checks:
 {{DESCRIPTION}}
 
 ---
+
+**Before generating:** re-read the description above and identify any milestones
+the user explicitly mentioned (named releases, version targets, phase
+boundaries, or "done when" statements). If any are found, treat them as fixed
+anchors in your dependency graph — every feature they cover must be placed
+before them, and their titles/versions must match what the user described.
 
 Generate the ROADMAP.json now. Output ONLY the JSON, nothing else.
