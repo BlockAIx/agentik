@@ -51,3 +51,13 @@ yet.
 {{TASK}}
 
 {{TASK_SPEC}} {{CONTEXT_FILES}}
+
+## Documentation
+
+After implementing and verifying the task, update or create `README.md` at the
+project root with these sections (keep existing content that is still accurate):
+
+1. **What it is** — one-paragraph summary.
+2. **Structure** — directory tree with a one-line description per module.
+3. **How to run** — exact install + run commands.
+4. **How to test** — exact command to run the test suite.

@@ -15,7 +15,6 @@ from runner.opencode import (
     ModelConfigError,
     check_monthly_budget,
     run_opencode_build,
-    run_opencode_document,
     run_opencode_milestone,
     run_opencode_static_fix,
     select_project,
@@ -182,8 +181,8 @@ def _handle_task_failure(
 def finalise_task(
     task: str, project_dir: Path, task_outputs: list[str] | None = None
 ) -> None:
-    """Static-check, document, commit, merge, and tag a successfully tested task."""
-    _console.print("\n[bold][3/5] Static checks[/]")
+    """Static-check, commit, merge, and tag a successfully tested task."""
+    _console.print("\n[bold][3/4] Static checks[/]")
     for _attempt in range(_STATIC_FIX_MAX_ATTEMPTS):
         ok, check_output = run_static_checks(project_dir)
         if ok:
@@ -198,10 +197,7 @@ def finalise_task(
             "[yellow]⚠ Static analysis still failing after max attempts — proceeding.[/]"
         )
 
-    _console.print("\n[bold][4/5] Document[/]")
-    run_opencode_document(task, project_dir)
-
-    _console.print("\n[bold][5/5] Commit & merge[/]")
+    _console.print("\n[bold][4/4] Commit & merge[/]")
     mark_done(task, project_dir)
     commit_and_merge(task, project_dir, task_outputs=task_outputs)
     try_deploy_hook(task, project_dir)
@@ -439,9 +435,8 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
             "[yellow]⚠ Static analysis still failing after max attempts — proceeding.[/]"
         )
 
-    # ── 4/4 Document (once) + Commit (per-task for git attribution) ──────
-    _console.print("\n[bold][4/4] Document & commit[/]  [dim](batch)[/]")
-    run_opencode_document(batch[0], project_dir)
+    # ── 4/4 Commit (per-task for git attribution) ──────────────────────
+    _console.print("\n[bold][4/4] Commit[/]  [dim](batch)[/]")
 
     for idx, task in enumerate(batch):
         is_last = idx == len(batch) - 1

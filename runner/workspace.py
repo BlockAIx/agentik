@@ -882,12 +882,11 @@ def generate_project_agents_md(project_dir: Path) -> None:
         "## Pipeline phases\n",
         "The runner drives the agent through these phases for each task:\n",
         "```\n"
-        f"Build    → implement module + unit tests ({src_rel}/ and tests/)\n"
+        f"Build    → implement module + unit tests + README ({src_rel}/ and tests/)\n"
         f"Test     → {test_cmd}\n"
         "Fix      → repair failing tests (same session, full test output provided)\n"
         f"Static   → {static_check}\n"
         "Stfix    → repair static analysis issues\n"
-        "Document → update README only (no logic changes)\n"
         "Commit   → runner handles git (feature/<slug> → develop)\n"
         "```\n",
         "\n---\n",

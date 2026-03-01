@@ -11,7 +11,7 @@ this before writing any code or modifying any project.
 pipeline:
 
 ```
-Build → Deps → Test → Coverage → Fix (retry) → Static Checks → Static Fix (retry) → Document → Commit → Notify → Deploy hook
+Build → Deps → Test → Coverage → Fix (retry) → Static Checks → Static Fix (retry) → Commit → Notify → Deploy hook
 ```
 
 **Your job as `build` / `fix`:** implement one task exactly as specified, then
@@ -27,7 +27,7 @@ user how they want it handled** using a single-select prompt with two options:
 
 - **Add as ROADMAP task** — append a well-formed task to the project's
   `ROADMAP.json` so it runs through the full pipeline (build → test →
-  static checks → docs → commit).
+  static checks → commit).
 - **Implement directly** — make the change immediately without going through
   the runner pipeline.
 
@@ -150,7 +150,8 @@ agentik/                     <- workspace root repo (runner tooling only)
 ROADMAP preamble (title and `ecosystem:` lines stripped), which carries
 architecture notes and design constraints to every task automatically. The build
 agent also writes compact docstrings (one sentence + param/return lines, no
-prose blocks) and short inline comments on non-obvious logic.
+prose blocks), short inline comments on non-obvious logic, and updates the
+project `README.md` (summary, directory tree, how to run, how to test).
 
 > **Note on `context:`** — build agents have full file-tool access and will
 > discover and read dependency files on their own. `context:` pre-embeds file
@@ -205,9 +206,6 @@ Write code that passes static checks from the start:
   paths explicitly written in that stage (never implicit dirs like
   `/root/.cache` or `/deno-dir`). See `prompts/build.md` for the canonical Deno
   pattern.
-
-**Document** — runner continues the session asking for a `README.md` update
-(summary, directory tree, how to run, how to test). No logic or code changes.
 
 ---
 
@@ -320,16 +318,12 @@ right agent for every other phase automatically. Models are in `opencode.jsonc`.
 
 | Agent       | Writes files  | Role                                                      |
 | ----------- | ------------- | --------------------------------------------------------- |
-| `build`     | ✅            | Implement module + unit tests + compact docstrings        |
+| `build`     | ✅            | Implement module + unit tests + compact docstrings + README |
 | `fix`       | ✅            | Repair failing tests (continues build session)            |
-| `test`      | ✅ tests only | Extend / improve the test suite                           |
-| `document`  | ✅ docs only  | README update only, no logic changes                      |
-| `explore`   | ❌            | Read-only research spike                                  |
-| `plan`      | ❌            | Lightweight planning                                      |
 | `architect` | ❌            | Design / ADRs (use via task, not automatic)       |
 | `milestone` | ❌            | Review gate + semver tag on develop                  |
 
-`explore` / `plan` / `architect` cannot write files or run commands — use them
+`architect` cannot write files or run commands — use it
 for thinking, then follow with a `build` task.
 
 `milestone` invokes a review agent that can **read files and run inspection
@@ -374,7 +368,7 @@ Runner aborts (exit 2) if monthly limit is hit. A task is abandoned after
 
 When `max_parallel_agents > 1`, the runner uses `depends_on:` to build a
 dependency graph and schedules independent tasks in parallel. The **build**
-phase runs concurrently; test, static checks, and document then run **once per
+phase runs concurrently; test and static checks then run **once per
 batch** (not per task). Only commits remain per-task for git attribution. The
 first task always runs alone (project setup). Set `max_parallel_agents: 1` to
 disable parallelism.

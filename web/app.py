@@ -520,10 +520,6 @@ def api_dry_run(name: str) -> dict:
 _AGENT_NAMES = [
     "build",
     "fix",
-    "test",
-    "document",
-    "explore",
-    "plan",
     "architect",
     "milestone",
 ]

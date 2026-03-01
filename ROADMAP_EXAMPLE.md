@@ -1,7 +1,7 @@
 # ROADMAP.json — Reference & Example
 
 > Create `projects/<name>/ROADMAP.json`. The runner reads each task and drives
-> agents through **build → test → fix → static → document → commit** automatically.
+> agents through **build → test → fix → static → commit** automatically.
 > Write descriptions as if briefing a senior engineer.
 
 ---
@@ -41,7 +41,7 @@
 | `id`          | **yes**  | integer          | Unique task number (1–999)                                   |
 | `title`       | **yes**  | string           | Short imperative title (≤ 6 words, becomes branch name)      |
 | `depends_on`  | **yes**  | array of ints    | IDs this depends on; `[]` for independent tasks              |
-| `agent`       | no       | string           | `"build"` (default), `"milestone"`, `"plan"`, `"architect"`  |
+| `agent`       | no       | string           | `"build"` (default), `"milestone"`, `"architect"`  |
 | `ecosystem`   | no       | string           | Override project default for this task                       |
 | `context`     | no       | array of strings | Existing files pre-injected into the build prompt            |
 | `outputs`     | **yes**\* | array of strings | Files this task creates or modifies                          |

@@ -22,7 +22,7 @@ from typing import NamedTuple
 MAX_TITLE_WORDS: int = 6
 
 VALID_AGENTS: frozenset[str] = frozenset(
-    {"build", "fix", "test", "document", "explore", "plan", "architect", "milestone"}
+    {"build", "fix", "architect", "milestone"}
 )
 
 VALID_ECOSYSTEMS: frozenset[str] = frozenset({"python", "deno", "node", "go", "rust"})

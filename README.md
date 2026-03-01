@@ -3,8 +3,8 @@
 # agentik
 
 An autonomous development pipeline that drives
-[opencode](https://opencode.ai) through a full **build → test → fix → document
-→ commit** pipeline for every task defined in a project ROADMAP.
+[opencode](https://opencode.ai) through a full **build → test → fix → commit**
+pipeline for every task defined in a project ROADMAP.
 
 Write a structured `ROADMAP.json`, run `python agentik.py`, and let AI agents
 implement your project task by task — with git history, cost tracking, parallel
@@ -12,8 +12,8 @@ builds, and resume support built in.
 
 ## Features
 
-- **Zero-touch pipeline** — build, test, fix, lint, document, and commit in one
-  loop, fully automated
+- **Zero-touch pipeline** — build, test, fix, lint, and commit in one loop,
+  fully automated
 - **Parallel builds** — independent tasks run concurrently (dependency-aware
   scheduling)
 - **Multi-ecosystem** — auto-detects Python, Deno, Node/TS, Go, Rust; any
@@ -170,10 +170,9 @@ For each task agentik executes:
 | 5  | Fix      | If tests fail → fix agent patches code (same session, up to N retries) |
 | 6  | Static   | Lint & type checks (ruff / deno check+lint / tsc / go vet / clippy)    |
 | 7  | Stfix    | If static checks fail → fix agent resolves them (up to 2 retries)      |
-| 8  | Doc      | Document agent updates README                                          |
-| 9  | Commit   | `git add → commit → merge to develop` (when git is managed)           |
-| 10 | Notify   | Send webhook notification for pipeline events (if configured)          |
-| 11 | Deploy   | Runs deploy script if configured in ROADMAP (optional)                 |
+| 8  | Commit   | `git add → commit → merge to develop` (when git is managed)           |
+| 9  | Notify   | Send webhook notification for pipeline events (if configured)          |
+| 10 | Deploy   | Runs deploy script if configured in ROADMAP (optional)                 |
 
 ## Project structure
 
@@ -210,7 +209,6 @@ agentik/
 │   ├── build.md
 │   ├── fix.md
 │   ├── static_fix.md
-│   ├── document.md
 │   └── milestone.md
 ├── AGENTS.md                # agent instructions for this workspace
 ├── LICENSE                  # MIT license
@@ -278,12 +276,8 @@ Defined in `opencode.jsonc`. agentik selects the right agent per phase;
 
 | Agent       | Writes files | Role                                                |
 | ----------- | ------------ | --------------------------------------------------- |
-| `build`     | yes          | Implement module + unit tests                       |
+| `build`     | yes          | Implement module + unit tests + README update       |
 | `fix`       | yes          | Repair failing tests (continues build session)      |
-| `test`      | tests only   | Extend / improve the test suite                     |
-| `document`  | docs only    | README update, no logic changes                     |
-| `explore`   | no           | Read-only research spike                            |
-| `plan`      | no           | Lightweight planning                                |
 | `architect` | no           | Design / ADRs (use via task, not automatic)          |
 | `milestone` | no           | Review gate + semver tag on develop                  |
 
@@ -317,8 +311,8 @@ bar, and ETA.
 ## Parallel builds
 
 When `max_parallel_agents > 1`, independent tasks (no dependency edges between
-them) run concurrently. The build phase is parallel; test, static, and document
-phases run once per batch.
+them) run concurrently. The build phase is parallel; test and static phases run
+once per batch.
 
 **Important:** parallel tasks must not have overlapping `outputs:` or modify
 shared files. The validator enforces disjoint outputs for tasks that share the

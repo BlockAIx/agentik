@@ -37,10 +37,10 @@ export function Models({
   for (const m of models) values[m.agent] = m.model
 
   const buildAgents = models.filter((m) =>
-    ["build", "fix", "test"].includes(m.agent),
+    ["build", "fix"].includes(m.agent),
   )
   const supportAgents = models.filter((m) =>
-    ["document", "explore", "plan", "architect", "milestone"].includes(m.agent),
+    ["architect", "milestone"].includes(m.agent),
   )
 
   const error = fetchError ?? mutation.error
@@ -66,7 +66,7 @@ export function Models({
 
       <AgentGroup
         title="Support Agents"
-        description="Documentation, planning, architecture, and review"
+        description="Architecture (also used by the create roadmap tool) and milestone agents"
         agents={supportAgents}
         values={values}
         saving={mutation.isPending ? mutation.variables?.agent : undefined}

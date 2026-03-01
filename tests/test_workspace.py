@@ -736,7 +736,7 @@ class TestGenerateProjectAgentsMd:
         generate_project_agents_md(project)
         content = (project / "AGENTS.md").read_text(encoding="utf-8")
         assert "Build" in content
-        assert "Document" in content
+        assert "Commit" in content
 
     def test_overwrite_on_second_call(self, tmp_path: Path) -> None:
         """Calling the function twice rewrites the file (no duplicate content)."""

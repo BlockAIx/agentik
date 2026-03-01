@@ -597,19 +597,6 @@ def run_opencode_build(
     )
 
 
-def run_opencode_document(task: str, project_dir: Path) -> int:
-    """Invoke the document agent to finalise docs (continues session); return token delta."""
-    prompt = render_prompt("document", TASK=task)
-    return _invoke_opencode(
-        prompt,
-        agent="document",
-        project_dir=project_dir,
-        continue_session=True,
-        task=task,
-        phase="document",
-    )
-
-
 def run_opencode_static_fix(task: str, project_dir: Path, check_output: str) -> int:
     """Ask the fix agent to repair static analysis failures (continues session); return token delta."""
     truncated = check_output[-3000:] if len(check_output) > 3000 else check_output
