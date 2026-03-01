@@ -456,6 +456,26 @@ CHECKS: list[tuple[str, object]] = [
 # ---------------------------------------------------------------------------
 
 
+def collect_issues(path: Path) -> tuple[list[Issue], list[Issue]]:
+    """Parse *path* and run all checks; return (errors, warnings) without printing."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [Issue("ERROR", "preamble", f"Invalid JSON: {exc}")], []
+
+    _preamble, tasks = parse_roadmap(data)
+
+    errors: list[Issue] = []
+    warnings: list[Issue] = []
+    for _name, fn in CHECKS:
+        for issue in fn(data, tasks):  # type: ignore[operator]
+            if issue.level == "ERROR":
+                errors.append(issue)
+            else:
+                warnings.append(issue)
+    return errors, warnings
+
+
 def run_checks(path: Path) -> int:
     """Validate *path* (ROADMAP.json) and print a report; return 0 (clean) or 1 (errors found)."""
     try:

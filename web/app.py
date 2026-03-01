@@ -360,10 +360,14 @@ def validate_roadmap(name: str) -> dict:
     roadmap_path = project_dir / ROADMAP_FILENAME
     if not roadmap_path.exists():
         raise HTTPException(404, "ROADMAP.json not found")
-    from helpers.check_roadmap import run_checks  # noqa: PLC0415
+    from helpers.check_roadmap import collect_issues  # noqa: PLC0415
 
-    rc = run_checks(roadmap_path)
-    return {"valid": rc == 0}
+    errors, warnings = collect_issues(roadmap_path)
+    return {
+        "valid": len(errors) == 0,
+        "errors": [{"task": i.task, "message": i.message} for i in errors],
+        "warnings": [{"task": i.task, "message": i.message} for i in warnings],
+    }
 
 
 @app.get("/api/projects/{name}/budget")
@@ -492,7 +496,7 @@ async def generate_roadmap_api(name: str, request: Request) -> dict:
     from runner.plan import _call_architect  # noqa: PLC0415
 
     full_desc = f"Project: {name}\nEcosystem: {ecosystem}\n\n{description}"
-    result = _call_architect(full_desc, name)
+    result = _call_architect(full_desc, name, ecosystem)
 
     if result is None:
         raise HTTPException(500, "Failed to generate ROADMAP")
@@ -502,17 +506,6 @@ async def generate_roadmap_api(name: str, request: Request) -> dict:
         return {"roadmap": roadmap}
     except json.JSONDecodeError:
         raise HTTPException(500, "Generated invalid JSON")
-
-
-@app.get("/api/projects/{name}/dryrun")
-def api_dry_run(name: str) -> dict:
-    """Run a dry-run cost estimation for the project."""
-    project_dir = PROJECTS_ROOT / name
-    if not project_dir.exists():
-        raise HTTPException(404, f"Project '{name}' not found")
-    from runner.dryrun import dry_run  # noqa: PLC0415
-
-    return dry_run(project_dir)
 
 
 # ── Model management ──────────────────────────────────────────────────────────

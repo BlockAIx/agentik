@@ -9,7 +9,6 @@ or, after pip install -e .:
 CLI flags:
     --web           Launch the web UI dashboard without a menu prompt.
     --pipeline      Run the interactive pipeline directly (no menu).
-    --dry-run       Walk the dependency graph and estimate cost without running.
     --graph-html    Generate an interactive HTML dependency graph.
     --host HOST     Web UI host (default: 127.0.0.1).
     --port PORT     Web UI port (default: 8420).
@@ -33,18 +32,6 @@ def _run_pipeline() -> None:
     from runner import main
 
     main()
-
-
-def _run_dryrun() -> None:
-    from runner.opencode import select_project
-
-    project_dir = select_project()
-    from runner.workspace import ensure_workspace_dirs
-
-    ensure_workspace_dirs(project_dir)
-    from runner.dryrun import dry_run
-
-    dry_run(project_dir)
 
 
 def _run_graph_html() -> None:
@@ -78,11 +65,10 @@ def _menu(host: str, port: int) -> None:
         f"[dim](http://{host}:{port})[/]"
     )
     console.print("  [bold]2.[/]  Run [yellow]interactive pipeline[/]")
-    console.print("  [bold]3.[/]  [dim]Dry-run[/] — estimate cost without executing")
-    console.print("  [bold]4.[/]  Generate [dim]HTML[/] dependency graph")
+    console.print("  [bold]3.[/]  Generate [dim]HTML[/] dependency graph")
     console.print()
 
-    choice = IntPrompt.ask("Select", choices=["1", "2", "3", "4"], default=1)
+    choice = IntPrompt.ask("Select", choices=["1", "2", "3"], default=1)
     console.print()
 
     if choice == 1:
@@ -90,8 +76,6 @@ def _menu(host: str, port: int) -> None:
     elif choice == 2:
         _run_pipeline()
     elif choice == 3:
-        _run_dryrun()
-    elif choice == 4:
         _run_graph_html()
 
 
@@ -101,10 +85,6 @@ def _cli() -> None:
 
     if "--pipeline" in args:
         _run_pipeline()
-        return
-
-    if "--dry-run" in args or "--dryrun" in args:
-        _run_dryrun()
         return
 
     if "--graph-html" in args:

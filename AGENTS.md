@@ -105,7 +105,6 @@ agentik/                     <- workspace root repo (runner tooling only)
 │   ├── workspace.py        <- ecosystem detection, git operations
 │   ├── coverage.py         <- test coverage gating
 │   ├── diagnostics.py      <- structured failure reports
-│   ├── dryrun.py           <- dry-run cost / time estimation
 │   ├── graph_html.py       <- interactive HTML dependency graph
 │   ├── notify.py           <- webhook notification support
 │   ├── plan.py             <- ROADMAP generation from NL descriptions

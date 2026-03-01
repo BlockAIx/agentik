@@ -1,21 +1,21 @@
 import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
@@ -113,9 +113,10 @@ export function CreateProjectDialog({
             <Textarea
               id="preamble"
               placeholder="Brief description of the project..."
-              rows={3}
+              rows={4}
               value={preamble}
               onChange={(e) => setPreamble(e.target.value)}
+              className="resize-y max-h-48 overflow-y-auto"
             />
           </div>
           <div className="flex items-center justify-between">

@@ -37,8 +37,6 @@ builds, and resume support built in.
   when a task exceeds max attempts
 - **Webhook notifications** — send pipeline events (task complete, task failed,
   pipeline done) to Slack, Discord, or any HTTP endpoint
-- **Dry-run / cost estimation** — preview token usage, estimated USD cost, and
-  time for remaining tasks without running anything (via web UI)
 - **Structured error diagnostics** — JSON failure reports saved per task with
   last error, failing test, attempt count, and token spend
 - **Interactive HTML dependency graph** — open a standalone graph in your
@@ -191,7 +189,6 @@ agentik/
 │   ├── workspace.py         #   ecosystem detection, git operations
 │   ├── coverage.py          #   test coverage gating
 │   ├── diagnostics.py       #   structured failure reports
-│   ├── dryrun.py            #   dry-run cost / time estimation
 │   ├── graph_html.py        #   interactive HTML dependency graph
 │   ├── notify.py            #   webhook notification support
 │   ├── plan.py              #   ROADMAP generation from NL descriptions
@@ -473,12 +470,6 @@ Send events to any HTTP endpoint (Slack, Discord, custom). Add to your
 
 Events are sent as JSON POST requests. Notification failures are logged but
 never break the pipeline.
-
-## Dry-run mode
-
-Estimate cost and time without running anything. Dry-run is available through the
-web UI dashboard — select a project and view the cost breakdown in the Controls
-tab.
 
 ## Git rollback on failure
 

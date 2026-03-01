@@ -162,7 +162,11 @@ export const api = {
     ),
 
   validateRoadmap: (name: string) =>
-    fetchJson<{ valid: boolean }>(`/api/projects/${name}/validate`, { method: "POST" }),
+    fetchJson<{
+      valid: boolean
+      errors: Array<{ task: string; message: string }>
+      warnings: Array<{ task: string; message: string }>
+    }>(`/api/projects/${name}/validate`, { method: "POST" }),
 
   getProjectBudget: (name: string, signal?: AbortSignal) =>
     fetchJson<ProjectBudget>(`/api/projects/${name}/budget`, { signal }),

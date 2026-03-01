@@ -12,6 +12,12 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 
+type ValidationResult = {
+  valid: boolean
+  errors: Array<{ task: string; message: string }>
+  warnings: Array<{ task: string; message: string }>
+}
+
 export function RoadmapEditor({
   projectName,
 }: {
@@ -24,7 +30,7 @@ export function RoadmapEditor({
   const [localContent, setLocalContent] = useState<string | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
-  const [validateMsg, setValidateMsg] = useState<string | null>(null)
+  const [validateResult, setValidateResult] = useState<ValidationResult | null>(null)
 
   const baseContent = roadmapData ? JSON.stringify(roadmapData, null, 2) : ""
   const content = localContent ?? baseContent
@@ -99,12 +105,12 @@ export function RoadmapEditor({
   }
 
   const handleValidate = async () => {
-    setValidateMsg(null)
+    setValidateResult(null)
     try {
       const res = await validateMutation.mutateAsync(projectName)
-      setValidateMsg(res.valid ? "ROADMAP is valid" : "Validation returned issues")
+      setValidateResult(res)
     } catch (e) {
-      setValidateMsg(`Validation error: ${e}`)
+      setParseError(`Validation error: ${e}`)
     }
   }
 
@@ -179,16 +185,48 @@ export function RoadmapEditor({
           {saveMsg}
         </div>
       )}
-      {validateMsg && (
-        <div
-          className={`p-3 border rounded-md text-sm flex items-start gap-2 ${
-            validateMsg.includes("valid")
-              ? "bg-success/10 border-success/20 text-success"
-              : "bg-warning/10 border-warning/20 text-warning"
-          }`}
-        >
+      {validateResult && validateResult.valid && validateResult.warnings.length === 0 && (
+        <div className="p-3 bg-success/10 border border-success/20 rounded-md text-sm text-success flex items-start gap-2">
           <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
-          {validateMsg}
+          All checks passed — ROADMAP is valid.
+        </div>
+      )}
+      {validateResult && (validateResult.errors.length > 0 || validateResult.warnings.length > 0) && (
+        <div className="space-y-2">
+          {validateResult.errors.length > 0 && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
+              <div className="flex items-center gap-2 font-medium mb-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {validateResult.errors.length} error{validateResult.errors.length > 1 ? "s" : ""}
+              </div>
+              <ul className="space-y-1 pl-6 list-disc">
+                {validateResult.errors.map((e, i) => (
+                  <li key={i}>
+                    <span className="font-mono text-xs">task {e.task}</span>
+                    {" — "}
+                    {e.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {validateResult.warnings.length > 0 && (
+            <div className="p-3 bg-warning/10 border border-warning/20 rounded-md text-sm text-warning-foreground">
+              <div className="flex items-center gap-2 font-medium mb-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {validateResult.warnings.length} warning{validateResult.warnings.length > 1 ? "s" : ""}
+              </div>
+              <ul className="space-y-1 pl-6 list-disc">
+                {validateResult.warnings.map((w, i) => (
+                  <li key={i}>
+                    <span className="font-mono text-xs">task {w.task}</span>
+                    {" — "}
+                    {w.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

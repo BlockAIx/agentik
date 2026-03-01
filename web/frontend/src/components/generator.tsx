@@ -10,8 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useGenerateRoadmap, useUpdateRoadmap } from "@/hooks/use-queries"
-import { Check, Loader2, Sparkles, X } from "lucide-react"
+import { useAvailableModels, useGenerateRoadmap, useModels, useUpdateRoadmap } from "@/hooks/use-queries"
+import { AlertTriangle, Check, Loader2, Sparkles, X } from "lucide-react"
 import { useState } from "react"
 
 const ECOSYSTEMS = ["python", "deno", "node", "go", "rust"] as const
@@ -29,6 +29,15 @@ export function Generator({
 
   const generateMutation = useGenerateRoadmap()
   const updateMutation = useUpdateRoadmap()
+
+  const { data: models = [] } = useModels(projectName)
+  const { data: catalog = [] } = useAvailableModels()
+
+  const architectModel = models.find((m) => m.agent === "architect")?.model ?? ""
+  const architectMissing = !architectModel
+  const architectInvalid =
+    !architectMissing && catalog.length > 0 && !catalog.find((c) => c.full_id === architectModel)
+  const architectBlocked = architectMissing || architectInvalid
 
   const handleGenerate = async () => {
     if (!description.trim()) return
@@ -102,7 +111,7 @@ export function Generator({
             </div>
             <Button
               onClick={handleGenerate}
-              disabled={generateMutation.isPending || !description.trim()}
+              disabled={generateMutation.isPending || !description.trim() || architectBlocked}
             >
               {generateMutation.isPending ? (
                 <>
@@ -117,6 +126,16 @@ export function Generator({
               )}
             </Button>
           </div>
+          {architectBlocked && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                {architectMissing
+                  ? "No architect model configured. Set one in the Models tab before generating a roadmap."
+                  : "The configured architect model is not available through your connected providers. Update it in the Models tab."}
+              </span>
+            </div>
+          )}
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
               {error}

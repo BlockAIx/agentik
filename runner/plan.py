@@ -7,55 +7,13 @@ from pathlib import Path
 
 import questionary
 
-from runner.config import OPENCODE_CMD, PROJECTS_ROOT, ROADMAP_FILENAME, _console
-
-_ROADMAP_GENERATION_PROMPT = """\
-You are an expert software architect. The user will describe a project in plain language.
-Your job is to generate a valid ROADMAP.json for the agentik runner.
-
-## Rules
-
-1. Output ONLY valid JSON — no markdown fences, no commentary.
-2. The JSON must have this exact top-level structure:
-   ```
-   {{
-     "name": "<Project Name> v0.1",
-     "ecosystem": "<python|deno|node|go|rust>",
-     "preamble": "<1-2 sentence project description>",
-     "git": {{ "enabled": true }},
-     "tasks": [ ... ]
-   }}
-   ```
-3. Each task in the `tasks` array must have:
-   - `"id"`: sequential integer starting from 1
-   - `"title"`: 2-6 word imperative title (becomes git branch name)
-   - `"depends_on"`: array of task IDs this task depends on (first task MUST be `[]`)
-   - `"outputs"`: array of file paths this task creates/modifies
-   - `"acceptance"`: one-line success criterion
-   - `"description"`: detailed spec for a senior engineer (include edge cases, data structures)
-
-4. Dependency rules:
-   - Exactly ONE root task with `depends_on: []` — this is the project scaffold
-   - The root task creates: directory layout, config files, shared types, test harness
-   - All other tasks depend on at least the root task
-   - No forward references, no self-references
-   - Parallel tasks must have disjoint `outputs`
-
-5. Design layers intentionally:
-   - Layer 0: foundation/scaffold (always task 1, always alone)
-   - Layer 1+: features that build on earlier layers
-   - Final layer: integration tests / milestone (optional)
-
-6. For Python projects: source goes in `<project_name>/`, tests in `tests/test_<module>.py`
-7. For Deno/Node: source goes in `src/`, tests in `tests/*.test.ts`
-8. Add a milestone task at the end if there are 5+ tasks
-
-## User's project description
-
-{description}
-
-Generate the ROADMAP.json now. Output ONLY the JSON.
-"""
+from runner.config import (
+    OPENCODE_CMD,
+    PROJECTS_ROOT,
+    ROADMAP_FILENAME,
+    _console,
+    render_prompt,
+)
 
 
 def generate_roadmap_interactive(project_name: str | None = None) -> Path | None:
@@ -102,7 +60,7 @@ def generate_roadmap_interactive(project_name: str | None = None) -> Path | None
     _console.print("\n[dim]Generating ROADMAP with AI architect...[/]")
 
     # Call opencode architect agent.
-    roadmap_json = _call_architect(full_description, project_name)
+    roadmap_json = _call_architect(full_description, project_name, ecosystem)
 
     if roadmap_json is None:
         _console.print("[red]Failed to generate ROADMAP.[/]")
@@ -163,9 +121,11 @@ def generate_roadmap_interactive(project_name: str | None = None) -> Path | None
     return roadmap_path
 
 
-def _call_architect(description: str, project_name: str) -> str | None:
+def _call_architect(
+    description: str, project_name: str, ecosystem: str = "python"
+) -> str | None:
     """Invoke the architect agent to generate ROADMAP JSON from a description."""
-    prompt = _ROADMAP_GENERATION_PROMPT.format(description=description)
+    prompt = render_prompt("generate", DESCRIPTION=description, ECOSYSTEM=ecosystem)
 
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".md", delete=False, encoding="utf-8"
