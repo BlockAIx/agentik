@@ -21,7 +21,7 @@ services:
       - ./projects:/app/projects
       # Mount opencode config so you can edit models without rebuilding.
       - ./opencode.jsonc:/app/opencode.jsonc:ro
-      - ./budget.json:/app/budget.json:ro
+      - ./budget.json:/app/budget.json
     environment:
       # opencode authentication — set in .env or pass directly.
       - OPENCODE_API_KEY=${OPENCODE_API_KEY:-}

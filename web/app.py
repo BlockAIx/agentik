@@ -798,7 +798,10 @@ async def update_budget_config(request: Request) -> dict:
     Note: changes take effect on next pipeline run (config.py reads at import time).
     """
     body = await request.json()
-    _BUDGET_CONFIG_PATH.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    try:
+        _BUDGET_CONFIG_PATH.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        raise HTTPException(500, f"Failed to write budget.json: {exc}") from exc
     return {"saved": True}
 
 
