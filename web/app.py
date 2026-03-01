@@ -268,7 +268,6 @@ def get_project(name: str) -> dict:
             "total": len(all_tasks),
             "failed": state.get("failed", []),
         },
-        "review_enabled": roadmap.get("review", False),
         "min_coverage": roadmap.get("min_coverage"),
         "notify": roadmap.get("notify"),
     }
@@ -498,41 +497,6 @@ async def generate_roadmap_api(name: str, request: Request) -> dict:
         return {"roadmap": roadmap}
     except json.JSONDecodeError:
         raise HTTPException(500, "Generated invalid JSON")
-
-
-@app.post("/api/projects/{name}/review/{action}")
-def handle_review(name: str, action: str) -> dict:
-    """Handle human-in-the-loop review decision (approve/reject)."""
-    if action not in ("approve", "reject"):
-        raise HTTPException(400, "Action must be 'approve' or 'reject'")
-    # This would integrate with a review queue in a full implementation.
-    return {"action": action, "acknowledged": True}
-
-
-@app.get("/api/projects/{name}/diff")
-def get_diff(name: str) -> dict:
-    """Get the current git diff for the project."""
-    project_dir = PROJECTS_ROOT / name
-    result = subprocess.run(
-        f'git -C "{project_dir}" diff HEAD',
-        shell=True,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    status = subprocess.run(
-        f'git -C "{project_dir}" status --short',
-        shell=True,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    return {
-        "diff": result.stdout,
-        "status": status.stdout,
-    }
 
 
 @app.get("/api/projects/{name}/dryrun")

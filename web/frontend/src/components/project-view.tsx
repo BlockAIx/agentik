@@ -5,7 +5,6 @@ import { Layout } from "@/components/layout"
 import { Logs } from "@/components/logs"
 import { Models } from "@/components/models"
 import { Overview } from "@/components/overview"
-import { Review } from "@/components/review"
 import { RoadmapEditor } from "@/components/roadmap-editor"
 import { Tasks } from "@/components/tasks"
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +24,6 @@ import {
 import { useWsStore } from "@/stores/ws-store"
 import {
   Cpu,
-  Eye,
   FileCode2,
   FileText,
   GitBranch,
@@ -45,7 +43,6 @@ const VALID_TABS = [
   "editor",
   "generator",
   "models",
-  "review",
   "controls",
 ] as const
 
@@ -117,7 +114,7 @@ export function ProjectView(): React.JSX.Element {
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="gap-1 text-xs">
               <LayoutDashboard className="h-3.5 w-3.5" />
               Overview
@@ -146,10 +143,6 @@ export function ProjectView(): React.JSX.Element {
               <Cpu className="h-3.5 w-3.5" />
               Models
             </TabsTrigger>
-            <TabsTrigger value="review" className="gap-1 text-xs">
-              <Eye className="h-3.5 w-3.5" />
-              Review
-            </TabsTrigger>
             <TabsTrigger value="controls" className="gap-1 text-xs">
               <Settings2 className="h-3.5 w-3.5" />
               Controls
@@ -176,9 +169,6 @@ export function ProjectView(): React.JSX.Element {
           </TabsContent>
           <TabsContent value="models">
             <Models projectName={projectName} />
-          </TabsContent>
-          <TabsContent value="review">
-            <Review projectName={projectName} detail={detail} />
           </TabsContent>
           <TabsContent value="controls">
             <Controls

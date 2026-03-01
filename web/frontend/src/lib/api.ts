@@ -49,7 +49,6 @@ export interface ProjectDetail {
     total: number
     failed: Array<{ task: string; reason?: string }>
   }
-  review_enabled: boolean
   min_coverage: number | null
   notify: { url: string; events: string[] } | null
 }
@@ -197,17 +196,6 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ description, ecosystem }),
     }),
-
-  /* ── Review ── */
-
-  handleReview: (name: string, action: "approve" | "reject") =>
-    fetchJson<{ action: string; acknowledged: boolean }>(
-      `/api/projects/${name}/review/${action}`,
-      { method: "POST" },
-    ),
-
-  getDiff: (name: string, signal?: AbortSignal) =>
-    fetchJson<{ diff: string; status: string }>(`/api/projects/${name}/diff`, { signal }),
 
   /* ── Global config ── */
 

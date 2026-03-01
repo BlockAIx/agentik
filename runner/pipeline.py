@@ -181,8 +181,8 @@ def _handle_task_failure(
 def finalise_task(
     task: str, project_dir: Path, task_outputs: list[str] | None = None
 ) -> None:
-    """Static-check, document, review (optional), commit, merge, and tag a successfully tested task."""
-    _console.print("\n[bold][3/6] Static checks[/]")
+    """Static-check, document, commit, merge, and tag a successfully tested task."""
+    _console.print("\n[bold][3/5] Static checks[/]")
     for _attempt in range(_STATIC_FIX_MAX_ATTEMPTS):
         ok, check_output = run_static_checks(project_dir)
         if ok:
@@ -197,28 +197,10 @@ def finalise_task(
             "[yellow]⚠ Static analysis still failing after max attempts — proceeding.[/]"
         )
 
-    _console.print("\n[bold][4/6] Document[/]")
+    _console.print("\n[bold][4/5] Document[/]")
     run_opencode_document(task, project_dir)
 
-    # ── Human-in-the-loop review (opt-in) ──────────────────────────────
-    from runner.review import (  # noqa: PLC0415
-        discard_changes,
-        is_review_enabled,
-        show_diff_and_ask,
-    )
-
-    if is_review_enabled(task, project_dir):
-        _console.print("\n[bold][5/6] Human Review[/]")
-        decision = show_diff_and_ask(project_dir)
-        if decision == "reject":
-            discard_changes(project_dir)
-            _console.print("[yellow]Task rejected by reviewer — changes discarded.[/]")
-            return
-        _console.print("[green]Review approved.[/]")
-    else:
-        _console.print("\n[dim][5/6] Review — skipped (not enabled)[/]")
-
-    _console.print("\n[bold][6/6] Commit & merge[/]")
+    _console.print("\n[bold][5/5] Commit & merge[/]")
     mark_done(task, project_dir)
     commit_and_merge(task, project_dir, task_outputs=task_outputs)
     try_deploy_hook(task, project_dir)

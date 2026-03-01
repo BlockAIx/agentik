@@ -29,8 +29,6 @@ builds, and resume support built in.
   number
 - **Git managed (opt-in)** — automatic branching, commits, merges, and tags
   when enabled
-- **Human-in-the-loop review** — optional pause after build to inspect diffs
-  and approve/reject before committing
 - **ROADMAP generation** — describe a project in plain English and let an AI
   agent generate a valid `ROADMAP.json` for you
 - **Test coverage gating** — enforce minimum coverage thresholds; the pipeline
@@ -46,8 +44,8 @@ builds, and resume support built in.
 - **Interactive HTML dependency graph** — open a standalone graph in your
   browser with colour-coded status and token budgets
 - **Web UI dashboard** — React + Tailwind + shadcn frontend with live
-  WebSocket updates, 10 tabs (Overview, Graph, Tasks, Logs, Editor, Budget,
-  Generate, Models, Review, Controls), Monaco JSON editor, React Flow
+  WebSocket updates, 9 tabs (Overview, Graph, Tasks, Logs, Editor, Budget,
+  Generate, Models, Controls), Monaco JSON editor, React Flow
   dependency graph, project creation wizard, and full pipeline control via
   REST API
 
@@ -172,11 +170,10 @@ For each task agentik executes:
 | 5  | Fix      | If tests fail → fix agent patches code (same session, up to N retries) |
 | 6  | Static   | Lint & type checks (ruff / deno check+lint / tsc / go vet / clippy)    |
 | 7  | Stfix    | If static checks fail → fix agent resolves them (up to 2 retries)      |
-| 8  | Review   | Human-in-the-loop: show diff, wait for approve/reject (if enabled)     |
-| 9  | Doc      | Document agent updates README                                          |
-| 10 | Commit   | `git add → commit → merge to develop` (when git is managed)           |
-| 11 | Notify   | Send webhook notification for pipeline events (if configured)          |
-| 12 | Deploy   | Runs deploy script if configured in ROADMAP (optional)                 |
+| 8  | Doc      | Document agent updates README                                          |
+| 9  | Commit   | `git add → commit → merge to develop` (when git is managed)           |
+| 10 | Notify   | Send webhook notification for pipeline events (if configured)          |
+| 11 | Deploy   | Runs deploy script if configured in ROADMAP (optional)                 |
 
 ## Project structure
 
@@ -199,7 +196,6 @@ agentik/
 │   ├── graph_html.py        #   interactive HTML dependency graph
 │   ├── notify.py            #   webhook notification support
 │   ├── plan.py              #   ROADMAP generation from NL descriptions
-│   ├── review.py            #   human-in-the-loop review mode
 │   └── rollback.py          #   git rollback on task failure
 ├── web/                     # web UI dashboard
 │   ├── app.py               #   FastAPI backend + REST API
@@ -442,7 +438,6 @@ The dashboard opens at `http://127.0.0.1:8420` with these tabs:
 | Budget     | Monaco JSON editor for per-project budget.json                 |
 | Generate   | Describe a project → AI generates a valid ROADMAP.json         |
 | Models     | Per-agent model configuration with live connection testing     |
-| Review     | View git diff + approve/reject (human-in-the-loop)             |
 | Controls   | Run/stop pipeline with live log streaming                      |
 
 Live updates are pushed over WebSocket — no polling needed.
@@ -455,18 +450,6 @@ npm install
 npm run dev          # Vite dev server with API proxy to :8420
 npm run build        # production build → web/static/
 ```
-
-## Human-in-the-loop review
-
-Enable review mode to pause after each build phase and inspect changes before
-committing. Add to your `ROADMAP.json`:
-
-```json
-{ "review": true }
-```
-
-Or enable per-task by adding `"review": true` to individual tasks. When
-enabled, the pipeline shows a diff and waits for you to approve or reject.
 
 ## Test coverage gating
 

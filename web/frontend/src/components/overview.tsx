@@ -215,9 +215,6 @@ export function Overview({ project, invalidModels }: OverviewProps) {
           <div className="flex items-center gap-4 text-sm">
             <span className="text-muted-foreground">Ecosystem:</span>
             <Badge variant="outline">{project.ecosystem}</Badge>
-            {project.review_enabled && (
-              <Badge variant="secondary">Review enabled</Badge>
-            )}
             {project.min_coverage && (
               <Badge variant="secondary">
                 Coverage &ge; {project.min_coverage}%

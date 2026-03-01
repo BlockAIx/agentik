@@ -21,7 +21,6 @@ const keys = {
   availableModels: ["availableModels"] as const,
   providers: ["providers"] as const,
   budgetConfig: ["budgetConfig"] as const,
-  diff: (name: string) => ["diff", name] as const,
   roadmap: (name: string) => ["roadmap", name] as const,
 }
 
@@ -106,14 +105,6 @@ export function useBudgetConfig() {
   })
 }
 
-export function useDiff(name: string) {
-  return useQuery({
-    queryKey: keys.diff(name),
-    queryFn: ({ signal }) => api.getDiff(name, signal),
-    enabled: !!name,
-  })
-}
-
 export function useRoadmap(name: string) {
   return useQuery({
     queryKey: keys.roadmap(name),
@@ -177,13 +168,6 @@ export function useGenerateRoadmap() {
   return useMutation({
     mutationFn: (v: { name: string; description: string; ecosystem: string }) =>
       api.generateRoadmap(v.name, v.description, v.ecosystem),
-  })
-}
-
-export function useHandleReview() {
-  return useMutation({
-    mutationFn: (v: { name: string; action: "approve" | "reject" }) =>
-      api.handleReview(v.name, v.action),
   })
 }
 

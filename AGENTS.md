@@ -11,7 +11,7 @@ this before writing any code or modifying any project.
 pipeline:
 
 ```
-Build → Deps → Test → Coverage → Fix (retry) → Static Checks → Static Fix (retry) → Review → Document → Commit → Notify → Deploy hook
+Build → Deps → Test → Coverage → Fix (retry) → Static Checks → Static Fix (retry) → Document → Commit → Notify → Deploy hook
 ```
 
 **Your job as `build` / `fix`:** implement one task exactly as specified, then
@@ -109,7 +109,6 @@ agentik/                     <- workspace root repo (runner tooling only)
 │   ├── graph_html.py       <- interactive HTML dependency graph
 │   ├── notify.py           <- webhook notification support
 │   ├── plan.py             <- ROADMAP generation from NL descriptions
-│   ├── review.py           <- human-in-the-loop review mode
 │   └── rollback.py         <- git rollback on task failure
 ├── web/                        <- web UI dashboard (separate from runner)
 │   ├── app.py              <- FastAPI backend + REST API
@@ -224,7 +223,6 @@ projects/<your-project>/ROADMAP.json
   "ecosystem": "python",
   "preamble": "Brief description.",
   "git": { "enabled": true },
-  "review": true,
   "min_coverage": 80,
   "notify": {
     "url": "https://hooks.slack.com/services/...",
