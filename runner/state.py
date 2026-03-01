@@ -150,7 +150,17 @@ def load_project_budget(project_dir: Path) -> dict:
     """
     path = project_budget_path(project_dir)
     if path.exists():
-        data = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            # Corrupted write — return a safe default and leave the bad file
+            # in place so the user can inspect it manually.
+            return {
+                "project": project_dir.name,
+                "total_tokens": 0,
+                "total_calls": 0,
+                "sessions": [],
+            }
         # Back-compat: old files before total_calls was added.
         data.setdefault("total_calls", len(data.get("sessions", [])))
         return data

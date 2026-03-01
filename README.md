@@ -40,14 +40,16 @@ builds, and resume support built in.
 - **Webhook notifications** — send pipeline events (task complete, task failed,
   pipeline done) to Slack, Discord, or any HTTP endpoint
 - **Dry-run / cost estimation** — preview token usage, estimated USD cost, and
-  time for remaining tasks without running anything
+  time for remaining tasks without running anything (via web UI)
 - **Structured error diagnostics** — JSON failure reports saved per task with
   last error, failing test, attempt count, and token spend
-- **Interactive HTML dependency graph** — open a standalone Mermaid-based graph
-  in your browser with colour-coded status and token budgets
+- **Interactive HTML dependency graph** — open a standalone graph in your
+  browser with colour-coded status and token budgets
 - **Web UI dashboard** — React + Tailwind + shadcn frontend with live
-  WebSocket updates, 8 tabs (Overview, Graph, Tasks, Logs, Editor, Generate,
-  Review, Controls), and full pipeline control via REST API
+  WebSocket updates, 10 tabs (Overview, Graph, Tasks, Logs, Editor, Budget,
+  Generate, Models, Review, Controls), Monaco JSON editor, React Flow
+  dependency graph, project creation wizard, and full pipeline control via
+  REST API
 
 ## Quickstart
 
@@ -149,9 +151,8 @@ An arrow-key project selector appears, then pick a mode:
 
 - **Run pipeline** — work through every uncompleted task
 - **Run pipeline (verbose)** — same, but stream full agent output
-- **Dry-run (estimate cost)** — preview tokens, USD, and time without running
 - **Show dependency graph** — colour-coded task graph in terminal
-- **Open interactive graph** — launch a Mermaid.js HTML graph in your browser
+- **Open interactive graph** — launch a graph in your browser
 - **Generate ROADMAP from description** — describe a project, get a valid ROADMAP
 - **Generate project AGENTS.md** — create or regenerate per-project agent instructions
 - **Start web UI** — launch the React dashboard at `http://127.0.0.1:8420`
@@ -237,8 +238,6 @@ Each project under `projects/` is its own directory. When git is managed
 repository with automatic branching and commits.
 
 ## ROADMAP.json reference
-
-![agentik](assets/dependencies.png)
 
 ### Task fields
 
@@ -436,13 +435,15 @@ The dashboard opens at `http://127.0.0.1:8420` with these tabs:
 | Tab        | Description                                                    |
 | ---------- | -------------------------------------------------------------- |
 | Overview   | Stats cards, progress bar, token usage chart, project info     |
-| Graph      | Mermaid.js dependency graph with colour-coded task status      |
+| Graph      | React Flow dependency graph with colour-coded task status      |
 | Tasks      | Sortable task table with status badges, agents, and tokens     |
 | Logs       | Log tree per task with inline failure report display           |
-| Editor     | JSON editor for ROADMAP.json with save and validate buttons    |
+| Editor     | Monaco JSON editor for ROADMAP.json with save and validate     |
+| Budget     | Monaco JSON editor for per-project budget.json                 |
 | Generate   | Describe a project → AI generates a valid ROADMAP.json         |
+| Models     | Per-agent model configuration with live connection testing     |
 | Review     | View git diff + approve/reject (human-in-the-loop)             |
-| Controls   | Run/stop pipeline, dry-run cost estimate with task breakdown   |
+| Controls   | Run/stop pipeline with live log streaming                      |
 
 Live updates are pushed over WebSocket — no polling needed.
 
@@ -498,14 +499,9 @@ never break the pipeline.
 
 ## Dry-run mode
 
-Estimate cost and time without running anything:
-
-```bash
-python agentik.py   # select "Dry-run (estimate cost)"
-```
-
-Shows per-task token estimates, total USD cost, estimated wall-clock time, and a
-breakdown by pipeline phase.
+Estimate cost and time without running anything. Dry-run is available through the
+web UI dashboard — select a project and view the cost breakdown in the Controls
+tab.
 
 ## Git rollback on failure
 
@@ -535,7 +531,6 @@ cp .env.example .env   # add your LLM API keys
 | `docker compose up` | Build image + start web UI at `:8420` |
 | `docker compose up -d` | Detached mode |
 | `docker compose run --rm agentik --pipeline` | Interactive pipeline |
-| `docker compose run --rm agentik --dry-run` | Dry-run cost estimate |
 | `docker compose down` | Stop and remove containers |
 
 ### Start script flags

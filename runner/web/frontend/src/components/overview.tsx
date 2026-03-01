@@ -10,11 +10,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { GlobalBudget, ProjectDetail } from "@/lib/api"
+import type { ProjectDetail } from "@/lib/api"
 import {
   Activity,
   CheckCircle2,
-  Clock,
   Coins,
   Layers,
   Zap,
@@ -38,10 +37,9 @@ function fmtDate(iso: string): string {
 
 interface OverviewProps {
   project: ProjectDetail;
-  budget: GlobalBudget | null;
 }
 
-export function Overview({ project, budget }: OverviewProps) {
+export function Overview({ project }: OverviewProps) {
   const { state, tasks } = project;
   const done = tasks.filter((t) => t.status === "done").length;
   const ready = tasks.filter((t) => t.status === "ready").length;
@@ -184,46 +182,6 @@ export function Overview({ project, budget }: OverviewProps) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Global budget */}
-      {budget && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4" />
-              Global Budget
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Monthly limit:</span>
-                <div className="font-medium">{fmt(budget.monthly_limit)}</div>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Spent:</span>
-                <div className="font-medium">{fmt(budget.spent_tokens)}</div>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Remaining:</span>
-                <div className="font-medium">{fmt(budget.remaining_tokens)}</div>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Max parallel:</span>
-                <div className="font-medium">{budget.max_parallel}</div>
-              </div>
-            </div>
-            <div className="mt-3 h-2 rounded-full bg-secondary overflow-hidden">
-              <div
-                className="h-full bg-chart-1 rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, (budget.spent_tokens / budget.monthly_limit) * 100)}%`,
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Token usage by task — clear table */}
       {taskUsage.length > 0 && (

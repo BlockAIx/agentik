@@ -1,4 +1,4 @@
-"""opencode.py — All opencode invocations, model connectivity check, and budget guards."""
+"""opencode.py — All opencode invocations and budget guards."""
 
 import datetime
 import json
@@ -7,6 +7,15 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+
+class ModelConfigError(Exception):
+    """Raised when the agent fails due to a model configuration problem.
+
+    These errors are non-retriable: retrying with the same model config will
+    always fail.  The pipeline should stop immediately and surface the error.
+    """
+
 
 import questionary
 
@@ -128,6 +137,45 @@ def _tail_log(log_path: Path) -> None:
         )
     except Exception as exc:  # noqa: BLE001
         _console.print(f"[dim](Could not read log {log_path.name}: {exc})[/]")
+
+
+# Patterns that indicate the model itself is misconfigured — retrying won't help.
+_MODEL_ERROR_PATTERNS = [
+    re.compile(r"ProviderModelNotFoundError", re.IGNORECASE),
+    re.compile(r"model[_ ]not[_ ]found", re.IGNORECASE),
+    re.compile(r"model .+ (is not available|does not exist)", re.IGNORECASE),
+    re.compile(r"unknown model", re.IGNORECASE),
+    re.compile(r"invalid model", re.IGNORECASE),
+    re.compile(r"no such model", re.IGNORECASE),
+    re.compile(r"model .+ not supported", re.IGNORECASE),
+    re.compile(r"Unauthorized|invalid.api.key|authentication.failed", re.IGNORECASE),
+    re.compile(r"PROVIDER_NOT_CONFIGURED", re.IGNORECASE),
+]
+
+
+def _check_model_error(log_path: Path) -> None:
+    """Scan the last lines of a failed agent log for model config errors.
+
+    Raises ``ModelConfigError`` when the failure is clearly due to a
+    misconfigured model (wrong name, missing provider, auth issues).
+    These are non-retriable — the pipeline should stop immediately.
+    """
+    try:
+        text = log_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        return
+
+    # Only scan the tail to avoid false positives in large logs.
+    tail = "\n".join(text.splitlines()[-80:])
+    for pattern in _MODEL_ERROR_PATTERNS:
+        match = pattern.search(tail)
+        if match:
+            # Extract a one-line summary from the matched region.
+            line = next(
+                (l.strip() for l in tail.splitlines() if pattern.search(l)),
+                match.group(),
+            )
+            raise ModelConfigError(f"Model configuration error (non-retriable): {line}")
 
 
 # ── Budget guard ───────────────────────────────────────────────────────────────
@@ -417,6 +465,10 @@ def _invoke_opencode(
             _console.print(f"  [red]✗ {phase}  (exit {rc})[/]  [dim]{log_rel}[/]")
             _tail_log(log_path)
 
+    # ── Detect non-retriable model errors ─────────────────────────────────
+    # Always check — some providers exit 0 despite model-not-found errors.
+    _check_model_error(log_path)
+
     return delta_tokens
 
 
@@ -628,10 +680,7 @@ def run_opencode_milestone(task: str, version: str, project_dir: Path) -> int:
     )
 
 
-# ── Startup model check ────────────────────────────────────────────────────────
-
-# Agents that MUST be connected for the runner to function at all.
-_CRITICAL_AGENTS = {"build", "fix"}
+# ── Opencode config helpers ─────────────────────────────────────────────────────
 
 
 def _strip_jsonc_comments(text: str) -> str:
@@ -692,86 +741,3 @@ def _is_copilot_only() -> bool:
         )
     except Exception:  # noqa: BLE001
         return False
-
-
-def _get_available_models() -> set[str] | None:
-    """Run ``opencode models`` and return the set of model IDs, or None on failure."""
-    result = subprocess.run(
-        f"{OPENCODE_CMD} models",
-        shell=True,
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    if result.returncode != 0:
-        return None
-    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
-
-
-def check_models() -> None:
-    """Validate every model in ``opencode.jsonc`` against ``opencode models`` output; exit 1 on critical miss."""
-    from rich.live import Live  # noqa: PLC0415
-    from rich.spinner import Spinner  # noqa: PLC0415
-    from rich.table import Table  # noqa: PLC0415
-
-    _console.print()
-
-    spinner = Spinner("dots", text="[dim]Checking model connectivity...[/]")
-    with Live(spinner, console=_console, transient=True):
-        available = _get_available_models()
-    if available is None:
-        _console.print(
-            f"[red bold]✗ opencode ({OPENCODE_CMD}) not found on PATH — install it first.[/]"
-        )
-        sys.exit(1)
-
-    cfg = _load_opencode_config()
-    models_to_check: dict[str, str] = {}
-    if "model" in cfg:
-        models_to_check["default"] = cfg["model"]
-    for agent_name, agent_cfg in cfg.get("agent", {}).items():
-        if isinstance(agent_cfg, dict) and "model" in agent_cfg:
-            models_to_check[agent_name] = agent_cfg["model"]
-
-    t = Table(
-        title="[bold]Model Connectivity[/]",
-        box=rbox.ROUNDED,
-        border_style="bright_black",
-        title_style="",
-        header_style="bold",
-        show_header=True,
-    )
-    t.add_column("Agent", style="cyan", no_wrap=True)
-    t.add_column("Status", no_wrap=True)
-    t.add_column("Model", style="dim", no_wrap=True)
-
-    any_critical_missing = False
-
-    for label, model_id in models_to_check.items():
-        ok = model_id in available
-        critical = label in _CRITICAL_AGENTS
-        if critical and not ok:
-            any_critical_missing = True
-
-        if ok:
-            status = "[green]✔ ok[/]"
-        elif critical:
-            status = "[red bold]✗ MISSING[/]"
-        else:
-            status = "[yellow]~ missing[/]"
-
-        name_cell = f"{label}  [bold red](critical)[/]" if critical else label
-        t.add_row(name_cell, status, model_id)
-
-    if not models_to_check:
-        t.add_row("", "[yellow]⚠ No models configured in opencode.jsonc[/]", "")
-
-    _console.print(t)
-
-    if any_critical_missing:
-        _console.print()
-        _console.print(
-            "[red bold]✗ Critical agent models are not connected.[/] Fix opencode.jsonc or run:"
-        )
-        _console.print("  [bold]opencode auth login[/]")
-        sys.exit(1)

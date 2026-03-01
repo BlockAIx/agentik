@@ -1,87 +1,104 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ProjectDetail } from "@/lib/api";
-import { useEffect, useRef } from "react";
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import type { ProjectDetail, TaskInfo } from "@/lib/api"
+import {
+  Background,
+  type Edge,
+  type Node,
+  ReactFlow,
+  ReactFlowProvider,
+} from "@xyflow/react"
+import "@xyflow/react/dist/style.css"
+import dagre from "dagre"
+import { useMemo } from "react"
 
-declare global {
-  interface Window {
-    mermaid: {
-      initialize: (config: Record<string, unknown>) => void;
-      run: (config?: { nodes?: HTMLElement[] }) => Promise<void>;
-    };
+const NODE_WIDTH = 200;
+const NODE_HEIGHT = 50;
+
+const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  done: { bg: "#16a34a", border: "#15803d", text: "#ffffff" },
+  ready: { bg: "#ca8a04", border: "#a16207", text: "#ffffff" },
+  blocked: { bg: "#475569", border: "#334155", text: "#94a3b8" },
+};
+
+function buildLayout(tasks: TaskInfo[]): { nodes: Node[]; edges: Edge[] } {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: "TB", nodesep: 40, ranksep: 60 });
+
+  for (const task of tasks) {
+    g.setNode(String(task.id), { width: NODE_WIDTH, height: NODE_HEIGHT });
   }
+
+  const edges: Edge[] = [];
+  for (const task of tasks) {
+    for (const dep of task.deps) {
+      // dep is a zero-padded string ("001") — normalise to match node IDs ("1").
+      const sourceId = String(parseInt(dep, 10));
+      const targetId = String(task.id);
+      const edgeId = `e${sourceId}-${targetId}`;
+      g.setEdge(sourceId, targetId);
+      edges.push({
+        id: edgeId,
+        source: sourceId,
+        target: targetId,
+        style: { stroke: "#64748b", strokeWidth: 2 },
+        animated: task.status === "ready",
+      });
+    }
+  }
+
+  dagre.layout(g);
+
+  const nodes: Node[] = tasks.map((task) => {
+    const pos = g.node(String(task.id));
+    const colors = STATUS_COLORS[task.status] ?? STATUS_COLORS.blocked;
+    return {
+      id: String(task.id),
+      position: { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 },
+      data: { label: `${task.id}. ${task.title}` },
+      style: {
+        background: colors.bg,
+        border: `2px solid ${colors.border}`,
+        color: colors.text,
+        borderRadius: 8,
+        padding: "8px 12px",
+        fontSize: 13,
+        fontWeight: 500,
+        width: NODE_WIDTH,
+        textAlign: "center" as const,
+      },
+      draggable: true,
+    };
+  });
+
+  return { nodes, edges };
 }
 
-function buildMermaidDef(project: ProjectDetail): string {
-  const lines = ["graph TD"];
+function GraphInner({ project }: { project: ProjectDetail }) {
+  const { nodes, edges } = useMemo(
+    () => buildLayout(project.tasks),
+    [project.tasks],
+  );
 
-  for (const task of project.tasks) {
-    const nodeId = `T${String(task.id).padStart(3, "0")}`;
-    const label = `${task.id}. ${task.title}`;
-
-    let style = "";
-    if (task.status === "done") {
-      style = `style ${nodeId} fill:#16a34a,stroke:#15803d,color:#fff`;
-    } else if (task.status === "ready") {
-      style = `style ${nodeId} fill:#ca8a04,stroke:#a16207,color:#fff`;
-    } else {
-      style = `style ${nodeId} fill:#475569,stroke:#334155,color:#94a3b8`;
-    }
-
-    lines.push(`    ${nodeId}["${label}"]`);
-    if (style) lines.push(`    ${style}`);
-  }
-
-  // Edges.
-  for (const task of project.tasks) {
-    const nodeId = `T${String(task.id).padStart(3, "0")}`;
-    for (const dep of task.deps) {
-      const depId = `T${dep.padStart(3, "0")}`;
-      lines.push(`    ${depId} --> ${nodeId}`);
-    }
-  }
-
-  return lines.join("\n");
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      fitView
+      minZoom={0.3}
+      maxZoom={2}
+      proOptions={{ hideAttribution: true }}
+      nodesDraggable
+      nodesConnectable={false}
+      elementsSelectable={false}
+    >
+      <Background color="#334155" gap={20} />
+    </ReactFlow>
+  );
 }
 
 export function Graph({ project }: { project: ProjectDetail }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scriptLoaded = useRef(false);
-
-  useEffect(() => {
-    const loadAndRender = async () => {
-      if (!scriptLoaded.current) {
-        await new Promise<void>((resolve) => {
-          if (window.mermaid) {
-            resolve();
-            return;
-          }
-          const script = document.createElement("script");
-          script.src =
-            "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
-          script.onload = () => resolve();
-          document.head.appendChild(script);
-        });
-        scriptLoaded.current = true;
-        window.mermaid.initialize({
-          startOnLoad: false,
-          theme: "dark",
-          flowchart: { curve: "monotoneX", padding: 20 },
-        });
-      }
-
-      if (containerRef.current) {
-        const def = buildMermaidDef(project);
-        containerRef.current.innerHTML = `<pre class="mermaid">${def}</pre>`;
-        await window.mermaid.run({
-          nodes: [containerRef.current.querySelector(".mermaid")!],
-        });
-      }
-    };
-
-    loadAndRender();
-  }, [project]);
-
   const done = project.tasks.filter((t) => t.status === "done").length;
   const ready = project.tasks.filter((t) => t.status === "ready").length;
   const blocked = project.tasks.filter((t) => t.status === "blocked").length;
@@ -106,10 +123,11 @@ export function Graph({ project }: { project: ProjectDetail }) {
           <CardTitle className="text-sm">Dependency Graph</CardTitle>
         </CardHeader>
         <CardContent>
-          <div
-            ref={containerRef}
-            className="overflow-auto min-h-[300px] flex items-center justify-center"
-          />
+          <div className="h-[500px] w-full">
+            <ReactFlowProvider>
+              <GraphInner project={project} />
+            </ReactFlowProvider>
+          </div>
         </CardContent>
       </Card>
     </div>

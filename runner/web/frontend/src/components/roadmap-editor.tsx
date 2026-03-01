@@ -1,10 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
+import Editor, { type BeforeMount } from "@monaco-editor/react";
 import { AlertTriangle, CheckCircle2, RotateCcw, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import type { editor } from "monaco-editor";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function RoadmapEditor({ projectName }: { projectName: string }) {
   const [content, setContent] = useState("");
@@ -13,6 +14,101 @@ export function RoadmapEditor({ projectName }: { projectName: string }) {
   const [validating, setValidating] = useState(false);
   const [valid, setValid] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+
+  /** Configure JSON diagnostics & schema before editor mounts. */
+  const handleBeforeMount: BeforeMount = useCallback((monaco) => {
+    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+      validate: true,
+      allowComments: false,
+      trailingCommas: "error",
+      schemaValidation: "error",
+      schemas: [
+        {
+          uri: "https://agentik.dev/schemas/roadmap.json",
+          fileMatch: ["*"],
+          schema: {
+            type: "object",
+            required: ["name", "ecosystem", "tasks"],
+            properties: {
+              name: { type: "string", description: "Project name" },
+              ecosystem: {
+                type: "string",
+                enum: ["python", "deno", "node", "rust", "go", "ruby"],
+                description: "Project ecosystem",
+              },
+              preamble: { type: "string", description: "Brief project description" },
+              git: {
+                type: "object",
+                properties: { enabled: { type: "boolean" } },
+                additionalProperties: false,
+              },
+              review: { type: "boolean" },
+              min_coverage: { type: "number", minimum: 0, maximum: 100 },
+              notify: {
+                type: "object",
+                properties: {
+                  url: { type: "string", format: "uri" },
+                  events: {
+                    type: "array",
+                    items: {
+                      type: "string",
+                      enum: ["task_complete", "task_failed", "pipeline_done"],
+                    },
+                  },
+                },
+              },
+              deploy: {
+                type: "object",
+                properties: {
+                  enabled: { type: "boolean" },
+                  script: { type: "string" },
+                  env: { type: "object" },
+                },
+              },
+              tasks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["id", "title", "depends_on"],
+                  properties: {
+                    id: { type: "integer", minimum: 1 },
+                    title: { type: "string", maxLength: 80 },
+                    agent: {
+                      type: "string",
+                      enum: ["build", "fix", "test", "document", "explore", "plan", "architect", "milestone"],
+                    },
+                    ecosystem: {
+                      type: "string",
+                      enum: ["python", "deno", "node", "rust", "go", "ruby"],
+                    },
+                    depends_on: {
+                      type: "array",
+                      items: { type: "integer", minimum: 1 },
+                    },
+                    context: {
+                      type: "array",
+                      items: { type: "string" },
+                    },
+                    outputs: {
+                      type: "array",
+                      items: { type: "string" },
+                    },
+                    acceptance: { type: "string" },
+                    version: { type: "string" },
+                    deploy: { type: "boolean" },
+                    description: { type: "string" },
+                  },
+                  additionalProperties: false,
+                },
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+      ],
+    });
+  }, []);
 
   useEffect(() => {
     api
@@ -44,7 +140,6 @@ export function RoadmapEditor({ projectName }: { projectName: string }) {
     setValidating(true);
     setError(null);
     try {
-      // Validate JSON syntax first.
       JSON.parse(content);
       const result = await api.validateRoadmap(projectName);
       setValid(result.valid);
@@ -123,15 +218,35 @@ export function RoadmapEditor({ projectName }: { projectName: string }) {
             {error}
           </div>
         )}
-        <Textarea
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value);
-            setValid(null);
-          }}
-          className="font-mono text-xs min-h-[60vh] resize-y"
-          spellCheck={false}
-        />
+        <div className="border border-border rounded-md overflow-hidden">
+          <Editor
+            height="60vh"
+            language="json"
+            theme="vs-dark"
+            value={content}
+            beforeMount={handleBeforeMount}
+            onChange={(value) => {
+              setContent(value ?? "");
+              setValid(null);
+            }}
+            onMount={(editor) => {
+              editorRef.current = editor;
+            }}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 13,
+              lineNumbers: "on",
+              scrollBeyondLastLine: false,
+              wordWrap: "on",
+              tabSize: 2,
+              formatOnPaste: true,
+              automaticLayout: true,
+              bracketPairColorization: { enabled: true },
+              folding: true,
+              renderValidationDecorations: "on",
+            }}
+          />
+        </div>
       </CardContent>
     </Card>
   );

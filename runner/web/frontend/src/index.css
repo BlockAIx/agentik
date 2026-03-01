@@ -166,7 +166,7 @@ body {
   body {
     @apply bg-background text-foreground;
   }
-  button, [role="button"], a, select, [data-state], [tabindex]:not([tabindex="-1"]) {
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]), a[href], select:not(:disabled), label[for] {
     cursor: pointer;
   }
   button:disabled, [aria-disabled="true"] {

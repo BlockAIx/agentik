@@ -29,9 +29,8 @@ def _cli() -> None:
         return
 
     if "--dry-run" in args or "--dryrun" in args:
-        from runner.opencode import check_models, select_project
+        from runner.opencode import select_project
 
-        check_models()
         project_dir = select_project()
         from runner.workspace import ensure_workspace_dirs
 
@@ -42,9 +41,8 @@ def _cli() -> None:
         return
 
     if "--graph-html" in args:
-        from runner.opencode import check_models, select_project
+        from runner.opencode import select_project
 
-        check_models()
         project_dir = select_project()
         from runner.workspace import ensure_workspace_dirs
 

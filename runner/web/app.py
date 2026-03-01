@@ -2,9 +2,12 @@
 
 import asyncio
 import json
+import os
 import re
 import subprocess
+import sys
 import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 try:
@@ -27,13 +30,30 @@ from runner.config import (
     _console,
 )
 
-app = FastAPI(title="agentik", docs_url="/api/docs")
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):  # type: ignore[type-arg]
+    """Capture the running event loop so background threads can schedule broadcasts."""
+    global _main_loop
+    _main_loop = asyncio.get_running_loop()
+    yield
+
+
+app = FastAPI(title="agentik", docs_url="/api/docs", lifespan=_lifespan)
+
+# Strip ANSI escape codes from subprocess output before sending to the browser.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[mGKHF]")
 
 # WebSocket connections for live updates.
 _ws_clients: list[WebSocket] = []
 _pipeline_lock = threading.Lock()
 _pipeline_running = False
+_pipeline_project: str | None = None
 _pipeline_thread: threading.Thread | None = None
+_pipeline_process: "subprocess.Popen[str] | None" = None
+# The main event loop captured at startup — used by background threads to
+# safely schedule coroutines via asyncio.run_coroutine_threadsafe.
+_main_loop: asyncio.AbstractEventLoop | None = None
 
 
 # ── Broadcast helper ───────────────────────────────────────────────────────────
@@ -53,15 +73,9 @@ async def _broadcast(event: str, data: dict) -> None:
 
 
 def broadcast_sync(event: str, data: dict) -> None:
-    """Thread-safe sync wrapper for broadcasting WebSocket events."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            asyncio.ensure_future(_broadcast(event, data))
-        else:
-            loop.run_until_complete(_broadcast(event, data))
-    except RuntimeError:
-        pass
+    """Thread-safe sync wrapper: schedules broadcast on the main event loop."""
+    if _main_loop is not None and _main_loop.is_running():
+        asyncio.run_coroutine_threadsafe(_broadcast(event, data), _main_loop)
 
 
 # ── API Routes ─────────────────────────────────────────────────────────────────
@@ -100,6 +114,58 @@ def list_projects() -> list[dict]:
             }
         )
     return result
+
+
+@app.post("/api/projects")
+async def create_project(request: Request) -> dict:
+    """Create a new project directory with a ROADMAP.json and optional git init."""
+    body = await request.json()
+    name = body.get("name", "").strip()
+    if not name or not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        raise HTTPException(
+            400, "Invalid project name (alphanumeric, hyphens, underscores only)"
+        )
+    project_dir = PROJECTS_ROOT / name
+    if project_dir.exists():
+        raise HTTPException(409, f"Project '{name}' already exists")
+
+    ecosystem = body.get("ecosystem", "python")
+    preamble = body.get("preamble", "")
+    git_enabled = body.get("git", False)
+
+    project_dir.mkdir(parents=True, exist_ok=True)
+
+    roadmap = {
+        "name": f"{name} v0.1",
+        "ecosystem": ecosystem,
+        "preamble": preamble,
+        "tasks": [],
+    }
+    if git_enabled:
+        roadmap["git"] = {"enabled": True}
+
+    (project_dir / ROADMAP_FILENAME).write_text(
+        json.dumps(roadmap, indent=2), encoding="utf-8"
+    )
+
+    # Init git repo if requested.
+    if git_enabled:
+        subprocess.run(
+            ["git", "init"],
+            cwd=str(project_dir),
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "checkout", "-b", "main"],
+            cwd=str(project_dir),
+            capture_output=True,
+        )
+        (project_dir / ".gitignore").write_text(
+            "logs/\n__pycache__/\n*.pyc\n.runner_state.json\n",
+            encoding="utf-8",
+        )
+
+    return {"created": True, "name": name, "path": str(project_dir)}
 
 
 @app.get("/api/projects/{name}")
@@ -288,10 +354,35 @@ def validate_roadmap(name: str) -> dict:
     return {"valid": rc == 0}
 
 
+@app.get("/api/projects/{name}/budget")
+def get_project_budget(name: str) -> dict:
+    """Get the per-project budget.json content."""
+    from runner.state import load_project_budget  # noqa: PLC0415
+
+    project_dir = PROJECTS_ROOT / name
+    if not project_dir.exists():
+        raise HTTPException(404, f"Project '{name}' not found")
+    return load_project_budget(project_dir)
+
+
+@app.put("/api/projects/{name}/budget")
+async def update_project_budget(name: str, request: Request) -> dict:
+    """Update the per-project budget.json."""
+    from runner.state import save_project_budget  # noqa: PLC0415
+
+    project_dir = PROJECTS_ROOT / name
+    if not project_dir.exists():
+        raise HTTPException(404, f"Project '{name}' not found")
+
+    body = await request.json()
+    save_project_budget(project_dir, body)
+    return {"saved": True}
+
+
 @app.post("/api/projects/{name}/run")
 async def run_pipeline(name: str, request: Request) -> dict:
-    """Start the pipeline for a project (non-blocking)."""
-    global _pipeline_running, _pipeline_thread
+    """Start the pipeline for a project as a subprocess and stream logs over WebSocket."""
+    global _pipeline_running, _pipeline_project, _pipeline_thread
 
     if _pipeline_running:
         raise HTTPException(409, "Pipeline already running")
@@ -300,16 +391,53 @@ async def run_pipeline(name: str, request: Request) -> dict:
     if not project_dir.exists():
         raise HTTPException(404, f"Project '{name}' not found")
 
+    body: dict = {}
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        pass
+    verbose = bool(body.get("verbose", False))
+
     def _run() -> None:
-        global _pipeline_running
+        global _pipeline_running, _pipeline_project, _pipeline_process
+        rc = -1
         try:
             _pipeline_running = True
-            # We can't fully automate the interactive prompts in a thread,
-            # but we can signal the state.
+            _pipeline_project = name
             broadcast_sync("pipeline_started", {"project": name})
+            env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+            if verbose:
+                env["AGENTIK_VERBOSE"] = "1"
+            cmd = [
+                sys.executable,
+                "-m",
+                "runner.web._pipeline_worker",
+                str(project_dir),
+            ]
+            with subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=env,
+            ) as proc:
+                _pipeline_process = proc
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    clean = _ANSI_RE.sub("", line.rstrip())
+                    if clean:
+                        broadcast_sync("log_line", {"project": name, "line": clean})
+                proc.wait()
+                rc = proc.returncode
+        except Exception as exc:  # noqa: BLE001
+            broadcast_sync("log_line", {"project": name, "line": f"[ERROR] {exc}"})
         finally:
             _pipeline_running = False
-            broadcast_sync("pipeline_stopped", {"project": name})
+            _pipeline_project = None
+            _pipeline_process = None
+            broadcast_sync("pipeline_stopped", {"project": name, "rc": rc})
 
     _pipeline_thread = threading.Thread(target=_run, daemon=True)
     _pipeline_thread.start()
@@ -318,10 +446,19 @@ async def run_pipeline(name: str, request: Request) -> dict:
 
 @app.post("/api/projects/{name}/stop")
 def stop_pipeline(name: str) -> dict:
-    """Request pipeline stop (sets flag for graceful shutdown)."""
-    global _pipeline_running
+    """Terminate the running pipeline subprocess if one is active."""
+    global _pipeline_running, _pipeline_project, _pipeline_process
     _pipeline_running = False
+    _pipeline_project = None
+    if _pipeline_process is not None:
+        _pipeline_process.terminate()
     return {"stopped": True}
+
+
+@app.get("/api/pipeline/status")
+def pipeline_status() -> dict:
+    """Return whether a pipeline is currently running."""
+    return {"running": _pipeline_running, "project": _pipeline_project}
 
 
 @app.post("/api/projects/{name}/generate-roadmap")
@@ -480,75 +617,65 @@ async def update_model(name: str, agent: str, request: Request) -> dict:
     return {"saved": True}
 
 
-@app.post("/api/projects/{name}/models/{agent}/test")
-def test_model(name: str, agent: str) -> dict:
-    """Test connectivity to the model configured for an agent."""
-    import time  # noqa: PLC0415
+# ── Models catalog (autocomplete) ─────────────────────────────────────────────
 
-    if agent not in _AGENT_NAMES:
-        raise HTTPException(400, f"Unknown agent: {agent}")
+_models_catalog_cache: list[str] | None = None
 
-    project_dir = PROJECTS_ROOT / name
-    if not project_dir.exists():
-        raise HTTPException(404, f"Project '{name}' not found")
 
-    config, _ = _load_opencode(project_dir)
-    default_model = config.get("model", "")
-    agent_config = config.get("agent", {}).get(agent, {})
-    model = agent_config.get("model", default_model)
+@app.get("/api/models-catalog")
+def get_models_catalog() -> list[str]:
+    """Return the full models.dev model list for autocomplete.
 
-    if not model:
-        return {
-            "agent": agent,
-            "model": "",
-            "ok": False,
-            "error": "No model configured",
-            "latency_ms": None,
-        }
+    Fetches from https://models.dev/api.json once and caches in memory.
+    The API shape is {provider_id: {models: {model_key: {id, name, ...}}}}.
+    Returns strings in "provider/model" format, sorted alphabetically.
+    Does NOT cache on network failure so the next request retries.
+    """
+    global _models_catalog_cache
+    if _models_catalog_cache is not None:
+        return _models_catalog_cache
 
-    # Test by running opencode with --version or a minimal probe.
-    start = time.perf_counter()
+    import urllib.request  # noqa: PLC0415
+
     try:
-        result = subprocess.run(
-            [OPENCODE_CMD, "version"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            encoding="utf-8",
-            errors="replace",
-        )
-        elapsed = int((time.perf_counter() - start) * 1000)
-        if result.returncode == 0:
-            return {
-                "agent": agent,
-                "model": model,
-                "ok": True,
-                "error": None,
-                "latency_ms": elapsed,
-            }
-        return {
-            "agent": agent,
-            "model": model,
-            "ok": False,
-            "error": result.stderr.strip() or "Non-zero exit",
-            "latency_ms": elapsed,
-        }
-    except FileNotFoundError:
-        return {
-            "agent": agent,
-            "model": model,
-            "ok": False,
-            "error": f"opencode CLI ({OPENCODE_CMD}) not found on PATH. Install with: curl -fsSL https://opencode.ai/install | bash",
-            "latency_ms": None,
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "agent": agent,
-            "model": model,
-            "ok": False,
-            "error": "Timeout (15s)",
-            "latency_ms": 15000,
-        }
+        with urllib.request.urlopen("https://models.dev/api.json", timeout=10) as resp:
+            data: dict = json.loads(resp.read().decode("utf-8"))
+        ids: list[str] = []
+        for provider_id, provider_obj in data.items():
+            models_dict = (
+                provider_obj.get("models", {}) if isinstance(provider_obj, dict) else {}
+            )
+            for model_key in models_dict:
+                ids.append(f"{provider_id}/{model_key}")
+        _models_catalog_cache = sorted(ids)
+    except Exception:  # noqa: BLE001
+        # Do not cache on failure — allow the next request to retry
+        return []
+    return _models_catalog_cache
+
+
+# ── Global budget config ──────────────────────────────────────────────────────
+
+_BUDGET_CONFIG_PATH = Path("budget.json")
+
+
+@app.get("/api/config/budget")
+def get_budget_config() -> dict:
+    """Read the global budget.json configuration."""
+    if not _BUDGET_CONFIG_PATH.exists():
+        raise HTTPException(404, "budget.json not found")
+    return json.loads(_BUDGET_CONFIG_PATH.read_text(encoding="utf-8"))
+
+
+@app.put("/api/config/budget")
+async def update_budget_config(request: Request) -> dict:
+    """Update the global budget.json configuration.
+
+    Note: changes take effect on next pipeline run (config.py reads at import time).
+    """
+    body = await request.json()
+    _BUDGET_CONFIG_PATH.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    return {"saved": True}
 
 
 @app.get("/api/budget")

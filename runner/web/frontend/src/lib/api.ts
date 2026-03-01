@@ -83,12 +83,24 @@ export interface ModelConfig {
   max_steps: number
 }
 
-export interface ModelTestResult {
-  agent: string
-  model: string
-  ok: boolean
-  error: string | null
-  latency_ms: number | null
+export interface BudgetConfig {
+  monthly_limit_tokens: number
+  per_task_limit_tokens: number
+  max_attempts_per_task: number
+  max_parallel_agents: number
+  token_prices_usd_per_million: {
+    input: number
+    output: number
+    cache_read: number
+    cache_write: number
+  }
+}
+
+export interface ProjectBudget {
+  project: string
+  total_tokens: number
+  total_calls: number
+  sessions: BudgetSession[]
 }
 
 const BASE = ""
@@ -104,6 +116,13 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   listProjects: () => fetchJson<ProjectSummary[]>("/api/projects"),
+
+  createProject: (name: string, ecosystem: string, preamble: string, git: boolean) =>
+    fetchJson<{ created: boolean; name: string; path: string }>("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, ecosystem, preamble, git }),
+    }),
 
   getProject: (name: string) => fetchJson<ProjectDetail>(`/api/projects/${name}`),
 
@@ -126,12 +145,25 @@ export const api = {
   validateRoadmap: (name: string) =>
     fetchJson<{ valid: boolean }>(`/api/projects/${name}/validate`, { method: "POST" }),
 
-  runPipeline: (name: string) =>
+  getProjectBudget: (name: string) =>
+    fetchJson<ProjectBudget>(`/api/projects/${name}/budget`),
+
+  updateProjectBudget: (name: string, data: Record<string, unknown>) =>
+    fetchJson<{ saved: boolean }>(`/api/projects/${name}/budget`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+  runPipeline: (name: string, verbose = false) =>
     fetchJson<{ started: boolean }>(`/api/projects/${name}/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ verbose }),
     }),
+
+  getPipelineStatus: () =>
+    fetchJson<{ running: boolean; project: string | null }>("/api/pipeline/status"),
 
   stopPipeline: (name: string) =>
     fetchJson<{ stopped: boolean }>(`/api/projects/${name}/stop`, { method: "POST" }),
@@ -153,6 +185,17 @@ export const api = {
 
   getGlobalBudget: () => fetchJson<GlobalBudget>("/api/budget"),
 
+  getBudgetConfig: () => fetchJson<BudgetConfig>("/api/config/budget"),
+
+  updateBudgetConfig: (data: BudgetConfig) =>
+    fetchJson<{ saved: boolean }>("/api/config/budget", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+  getModelsCatalog: () => fetchJson<string[]>("/api/models-catalog"),
+
   getModels: (name: string) =>
     fetchJson<ModelConfig[]>(`/api/projects/${name}/models`),
 
@@ -161,10 +204,5 @@ export const api = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model }),
-    }),
-
-  testModel: (name: string, agent: string) =>
-    fetchJson<ModelTestResult>(`/api/projects/${name}/models/${agent}/test`, {
-      method: "POST",
     }),
 }

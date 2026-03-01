@@ -12,7 +12,7 @@ from runner.config import (
     set_verbose,
 )
 from runner.opencode import (
-    check_models,
+    ModelConfigError,
     check_monthly_budget,
     run_opencode_build,
     run_opencode_document,
@@ -284,7 +284,15 @@ def process_task(
     for attempt in range(resume_attempt, MAX_ATTEMPTS):
         save_runner_state(project_dir, task, attempt, fix_logs)
 
-        passed, fix_logs = run_attempt(task, attempt, fix_logs, project_dir)
+        try:
+            passed, fix_logs = run_attempt(task, attempt, fix_logs, project_dir)
+        except ModelConfigError as exc:
+            _console.print(
+                f"\n[red bold]✗ Model error (non-retriable):[/] {exc}\n"
+                "[yellow]Fix the model configuration in opencode.jsonc and re-run.[/]"
+            )
+            _handle_task_failure(task, project_dir, fix_logs)
+            raise  # Propagate — pipeline must stop immediately
 
         if passed:
             finalise_task(task, project_dir)
@@ -381,6 +389,11 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
             _console.print(f"  [red]✗ Build failed:[/] {task}: {exc}")
     for task, exc in results:
         if exc is not None:
+            if isinstance(exc, ModelConfigError):
+                _console.print(
+                    f"\n[red bold]✗ Model error (non-retriable):[/] {exc}\n"
+                    "[yellow]Fix the model configuration in opencode.jsonc and re-run.[/]"
+                )
             raise exc
     _console.print(f"[dim]  All agent output in: {project_dir.name}/logs/[/]")
 
@@ -400,13 +413,20 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
                 f"\n[bold][2/4] Fix[/]  [dim](attempt {attempt + 1}/{MAX_ATTEMPTS})[/]"
             )
             save_runner_state(project_dir, batch[0], attempt, fix_logs)
-            run_opencode_build(
-                batch[0],
-                project_dir,
-                fix_logs=fix_logs,
-                attempt=attempt,
-                force_new_session=True,
-            )
+            try:
+                run_opencode_build(
+                    batch[0],
+                    project_dir,
+                    fix_logs=fix_logs,
+                    attempt=attempt,
+                    force_new_session=True,
+                )
+            except ModelConfigError as exc:
+                _console.print(
+                    f"\n[red bold]✗ Model error (non-retriable):[/] {exc}\n"
+                    "[yellow]Fix the model configuration in opencode.jsonc and re-run.[/]"
+                )
+                raise
             install_project_dependencies(project_dir)
 
             _console.print("\n[bold][2/4] Re-test[/]")
@@ -454,14 +474,105 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
         _console.print(f"  [green]✔ Committed:[/] {task}")
 
 
+# ── Non-interactive entry point (web UI) ──────────────────────────────────────
+
+
+def run_pipeline_headless(project_dir: Path, verbose: bool = False) -> None:
+    """Run the full pipeline loop without interactive prompts (used by web UI).
+
+    Args:
+        project_dir: Absolute path to the project directory.
+        verbose:     When True, full agent output is streamed; compact otherwise.
+    """
+    set_verbose(verbose)
+    _validate_roadmap(project_dir)
+    ensure_workspace_dirs(project_dir)
+
+    all_tasks = get_tasks(project_dir)
+    graph = parse_task_graph(project_dir)
+    first_task = all_tasks[0] if all_tasks else None
+
+    # Print already-completed tasks.
+    for task in all_tasks:
+        if task_done(task, project_dir):
+            _console.print(f"[dim]✓ Skipping (done):[/] {task}")
+
+    # Resume an interrupted task before re-entering the scheduling loop.
+    try:
+        saved = load_runner_state(project_dir)
+        if saved and saved["current_task"]:
+            resume_task = saved["current_task"]
+            if not task_done(resume_task, project_dir):
+                _console.print(
+                    f"[yellow]▶ Resuming[/] '{resume_task}' from attempt {saved['attempt'] + 1}"
+                )
+                process_task(
+                    resume_task,
+                    project_dir,
+                    resume_attempt=saved["attempt"],
+                    resume_fix_logs=saved.get("fix_logs"),
+                )
+
+        # Graph-based scheduling loop.
+        while True:
+            done_set = {t for t in all_tasks if task_done(t, project_dir)}
+            ready = get_ready_tasks(all_tasks, graph, done_set, project_dir)
+
+            if not ready:
+                break
+
+            if is_milestone_task(ready[0], project_dir):
+                process_milestone(ready[0], project_dir)
+                continue
+
+            if first_task and first_task in ready:
+                process_task(first_task, project_dir)
+                continue
+
+            buildable = [t for t in ready if not is_milestone_task(t, project_dir)]
+            if not buildable:
+                break
+
+            if len(buildable) == 1 or MAX_PARALLEL_AGENTS <= 1:
+                process_task(buildable[0], project_dir)
+                continue
+
+            batch = buildable[:MAX_PARALLEL_AGENTS]
+            process_parallel_batch(batch, project_dir)
+
+    except ModelConfigError:
+        _console.print(
+            "\n[red bold]╔══════════════════════════════════════════════════════╗[/]"
+            "\n[red bold]║  PIPELINE ABORTED — Model configuration error       ║[/]"
+            "\n[red bold]╚══════════════════════════════════════════════════════╝[/]"
+            "\n[yellow]Fix the model in opencode.jsonc and re-run the pipeline.[/]\n"
+        )
+        return
+
+    # Summary.
+    done_set = {t for t in all_tasks if task_done(t, project_dir)}
+    _console.print(
+        f"\n[green bold]Pipeline complete:[/] {len(done_set)}/{len(all_tasks)} tasks done."
+    )
+    try:
+        from runner.notify import send_notification  # noqa: PLC0415
+
+        send_notification(
+            project_dir,
+            "pipeline_done",
+            status="ok",
+            details={"completed": len(done_set), "total": len(all_tasks)},
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 
 def main() -> None:
     """Select a project and mode (build or graph), then run accordingly."""
     import questionary  # noqa: PLC0415
-
-    check_models()
 
     project_dir = select_project()
     _console.print(
@@ -498,10 +609,7 @@ def main() -> None:
                 title="🌐 Show dependency graph (HTML)", value="graph:html"
             ),
             questionary.Choice(
-                title="📊 Dry run — estimate cost & time", value="dryrun"
-            ),
-            questionary.Choice(
-                title="📝 Generate ROADMAP from description", value="plan"
+                title=" Generate ROADMAP from description", value="plan"
             ),
             questionary.Choice(title="🌐 Launch Web UI", value="webui"),
             questionary.Choice(
@@ -529,12 +637,6 @@ def main() -> None:
         from runner.graph_html import generate_graph_html  # noqa: PLC0415
 
         generate_graph_html(project_dir)
-        return
-
-    if mode == "dryrun":
-        from runner.dryrun import dry_run  # noqa: PLC0415
-
-        dry_run(project_dir)
         return
 
     if mode == "plan":

@@ -2,6 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import type { WsMessage } from "@/hooks/use-websocket";
+import { useWebSocket } from "@/hooks/use-websocket";
 import type { ProjectDetail } from "@/lib/api";
 import { api } from "@/lib/api";
 import {
@@ -9,8 +11,11 @@ import {
     Play,
     RefreshCw,
     Square,
+    Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const MAX_LOG_LINES = 2000;
 
 export function Controls({
   projectName,
@@ -23,16 +28,62 @@ export function Controls({
 }) {
   const [running, setRunning] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [pipelineActive, setPipelineActive] = useState(false);
+  const [statusChecked, setStatusChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [verbose, setVerbose] = useState(false);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Subscribe to pipeline WebSocket events for live output.
+  const handleWsMessage = useCallback(
+    (msg: WsMessage) => {
+      if (msg.event === "pipeline_started") {
+        if (msg.project === projectName) {
+          setLogs([]);
+          setPipelineActive(true);
+        }
+      } else if (msg.event === "pipeline_stopped") {
+        if (msg.project === projectName) {
+          setPipelineActive(false);
+          onRefresh();
+        }
+      } else if (msg.event === "log_line") {
+        if (msg.project === projectName) {
+          setLogs((prev) => {
+            const next = [...prev, msg.line as string];
+            return next.length > MAX_LOG_LINES ? next.slice(-MAX_LOG_LINES) : next;
+          });
+        }
+      }
+    },
+    [projectName, onRefresh],
+  );
+
+  useWebSocket(handleWsMessage);
+
+  // Check real pipeline status on mount / project change so Stop is enabled
+  // even if we missed the pipeline_started WebSocket event.
+  useEffect(() => {
+    setStatusChecked(false);
+    api.getPipelineStatus().then(({ running: r }) => {
+      setPipelineActive(r);
+    }).catch(() => {}).finally(() => setStatusChecked(true));
+  }, [projectName]);
+
+  // Auto-scroll to the bottom of the log panel whenever new lines arrive.
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
 
   const handleRun = async () => {
     setRunning(true);
     setError(null);
     setMessage(null);
     try {
-      const res = await api.runPipeline(projectName);
-      setMessage(res.started ? "Pipeline started" : "Pipeline already running");
+      const res = await api.runPipeline(projectName, verbose);
+      if (!res.started) setMessage("Pipeline already running");
     } catch (e) {
       setError(String(e));
     } finally {
@@ -46,7 +97,7 @@ export function Controls({
     setMessage(null);
     try {
       const res = await api.stopPipeline(projectName);
-      setMessage(res.stopped ? "Pipeline stopped" : "Pipeline was not running");
+      setMessage(res.stopped ? "Stop signal sent" : "Pipeline was not running");
     } catch (e) {
       setError(String(e));
     } finally {
@@ -63,8 +114,8 @@ export function Controls({
           <CardTitle className="text-sm">Pipeline Controls</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Button onClick={handleRun} disabled={running}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button onClick={handleRun} disabled={running || pipelineActive || !statusChecked}>
               {running ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
               ) : (
@@ -72,7 +123,11 @@ export function Controls({
               )}
               Run Pipeline
             </Button>
-            <Button variant="destructive" onClick={handleStop} disabled={stopping}>
+            <Button
+              variant="destructive"
+              onClick={handleStop}
+              disabled={stopping || !pipelineActive || !statusChecked}
+            >
               {stopping ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
               ) : (
@@ -84,6 +139,24 @@ export function Controls({
               <RefreshCw className="h-3.5 w-3.5 mr-1" />
               Refresh
             </Button>
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={verbose}
+                onChange={(e) => setVerbose(e.target.checked)}
+                className="rounded"
+              />
+              Verbose
+            </label>
+            {pipelineActive && (
+              <Badge
+                variant="outline"
+                className="gap-1 text-green-500 border-green-500/30 animate-pulse"
+              >
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Running
+              </Badge>
+            )}
           </div>
 
           {error && (
@@ -130,6 +203,40 @@ export function Controls({
                 )}
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Live log output panel */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between py-3">
+          <CardTitle className="text-sm">Live Pipeline Output</CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLogs([])}
+            className="h-6 px-2 text-xs"
+          >
+            <Trash2 className="h-3 w-3 mr-1" />
+            Clear
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="bg-zinc-950 rounded-b-lg font-mono text-xs text-green-400 h-[460px] overflow-y-auto p-3 border-t border-border">
+            {logs.length === 0 ? (
+              <span className="text-zinc-500">
+                {pipelineActive
+                  ? "Starting pipeline..."
+                  : "No output yet — click Run Pipeline to start."}
+              </span>
+            ) : (
+              logs.map((line, i) => (
+                <div key={i} className="leading-5 whitespace-pre-wrap break-all">
+                  {line}
+                </div>
+              ))
+            )}
+            <div ref={logEndRef} />
           </div>
         </CardContent>
       </Card>

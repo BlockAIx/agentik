@@ -1,9 +1,9 @@
 # ── agentik runner Docker image ─────────────────────────────────────────────────
 #
 # Provides the full agentik stack:
-#   - Python 3.12 + runner dependencies
+#   - Python 3.14 + runner dependencies
 #   - opencode CLI (installed via official opencode.ai script)
-#   - Node.js + pnpm (for Node/TS ecosystem projects)
+#   - Node.js 24 LTS + pnpm (for Node/TS ecosystem projects)
 #   - Git
 #   - Pre-built web UI frontend
 #
@@ -25,7 +25,7 @@
 #
 # See docker-compose.yml for the recommended way to run.
 
-FROM python:3.12-slim AS base
+FROM python:3.14-slim AS base
 
 # Prevent Python from writing .pyc files and enable unbuffered output.
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -50,7 +50,7 @@ RUN curl -fsSL https://opencode.ai/install | bash \
     && opencode version
 
 # ── Node.js + pnpm (for Node/TS ecosystem projects) ───────────────────────────
-ENV NODE_MAJOR=22
+ENV NODE_MAJOR=24
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/* \
@@ -62,7 +62,8 @@ WORKDIR /app
 
 # Install Python dependencies first (layer cache).
 COPY requirements.txt pyproject.toml ./
-RUN pip install --no-cache-dir -r requirements.txt \
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir fastapi "uvicorn[standard]"
 
 # Copy the rest of the source.
