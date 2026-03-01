@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { LayerInfo, ProjectDetail, TaskInfo } from "@/lib/api"
 import {
   Background,
-  type Edge,
-  type Node,
   ReactFlow,
   ReactFlowProvider,
+  type Edge,
+  type Node,
+  type ReactFlowInstance,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
-import { useMemo } from "react"
+import { useCallback, useMemo, useRef } from "react"
 
 const NODE_WIDTH = 200;
 const NODE_GAP_X = 40;
@@ -108,13 +109,34 @@ function GraphInner({ project }: { project: ProjectDetail }) {
     [project.tasks, project.layers],
   );
 
+  const rfRef = useRef<ReactFlowInstance | null>(null);
+
+  /** After the instance initialises (or data changes), fit the viewport so the
+   *  top of the graph is always visible first. */
+  const onInit = useCallback(
+    (instance: ReactFlowInstance) => {
+      rfRef.current = instance;
+      // Small delay lets React Flow finish its internal layout pass.
+      requestAnimationFrame(() => {
+        instance.fitView({ padding: 0.12 });
+        // After fitting, nudge the viewport so the top-left is visible rather
+        // than the default centred view (important for tall graphs).
+        const vp = instance.getViewport();
+        instance.setViewport({ x: vp.x, y: 10, zoom: vp.zoom });
+      });
+    },
+    [],
+  );
+
   return (
     <ReactFlow
       nodes={nodes}
       edges={edges}
       fitView
+      fitViewOptions={{ padding: 0.12 }}
       minZoom={0.3}
       maxZoom={2}
+      onInit={onInit}
       proOptions={{ hideAttribution: true }}
       nodesDraggable
       nodesConnectable={false}
@@ -131,6 +153,17 @@ export function Graph({ project }: { project: ProjectDetail }) {
   const blocked = project.tasks.filter((t) => t.status === "blocked").length;
 
   const milestones = project.tasks.filter((t) => t.agent === "milestone").length;
+
+  /* Build a fingerprint so the ReactFlowProvider remounts (and re-fits) when
+   * the task data changes — e.g. when navigating back to the graph tab. */
+  const dataKey = useMemo(
+    () => project.tasks.map((t) => `${t.id}:${t.status}`).join(","),
+    [project.tasks],
+  );
+
+  /* Scale container height with the number of layers so tall graphs are not
+   * squashed into a tiny viewport.  Minimum 500 px, grows at ~120 px/layer. */
+  const containerHeight = Math.max(500, project.layers.length * LAYER_HEIGHT + 80);
 
   return (
     <div className="space-y-4">
@@ -157,8 +190,8 @@ export function Graph({ project }: { project: ProjectDetail }) {
           <CardTitle className="text-sm">Dependency Graph</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-125 w-full">
-            <ReactFlowProvider>
+          <div className="w-full" style={{ height: containerHeight }}>
+            <ReactFlowProvider key={dataKey}>
               <GraphInner project={project} />
             </ReactFlowProvider>
           </div>
