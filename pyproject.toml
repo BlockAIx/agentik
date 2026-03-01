@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentik"
-version = "0.1.0"
+version = "0.2.0"
 description = "Autonomous development runner for AI-driven multi-project workflows"
 authors = [{name = "Thomas Heymelot"}]
 license = {text = "MIT"}
