@@ -1,4 +1,3 @@
-/** ErrorBoundary — catches render errors with a retry button. */
 import { Component } from "react"
 
 interface Props {
