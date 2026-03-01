@@ -394,6 +394,157 @@ def api_dry_run(name: str) -> dict:
     return dry_run(project_dir)
 
 
+# ── Model management ──────────────────────────────────────────────────────────
+
+_AGENT_NAMES = [
+    "build",
+    "fix",
+    "test",
+    "document",
+    "explore",
+    "plan",
+    "architect",
+    "milestone",
+]
+
+
+def _load_opencode(project_dir: Path) -> tuple[dict, Path | None]:
+    """Load opencode.jsonc from project or workspace root."""
+    for candidate in [project_dir / "opencode.jsonc", Path("opencode.jsonc")]:
+        if candidate.exists():
+            text = candidate.read_text(encoding="utf-8")
+            # Strip single-line comments (// ...) for JSON parsing.
+            cleaned = re.sub(r"//.*$", "", text, flags=re.MULTILINE)
+            return json.loads(cleaned), candidate
+    return {}, None
+
+
+@app.get("/api/projects/{name}/models")
+def get_models(name: str) -> list[dict]:
+    """Get model configuration for each agent in the project."""
+    project_dir = PROJECTS_ROOT / name
+    if not project_dir.exists():
+        raise HTTPException(404, f"Project '{name}' not found")
+
+    config, _ = _load_opencode(project_dir)
+    default_model = config.get("model", "")
+    agents = config.get("agent", {})
+
+    result = []
+    for agent_name in _AGENT_NAMES:
+        agent_config = agents.get(agent_name, {})
+        result.append(
+            {
+                "agent": agent_name,
+                "model": agent_config.get("model", default_model),
+                "max_steps": agent_config.get("max_steps", 3),
+            }
+        )
+    return result
+
+
+@app.put("/api/projects/{name}/models/{agent}")
+async def update_model(name: str, agent: str, request: Request) -> dict:
+    """Update the model for a specific agent in the project's opencode.jsonc."""
+    if agent not in _AGENT_NAMES:
+        raise HTTPException(400, f"Unknown agent: {agent}")
+
+    project_dir = PROJECTS_ROOT / name
+    if not project_dir.exists():
+        raise HTTPException(404, f"Project '{name}' not found")
+
+    body = await request.json()
+    new_model = body.get("model", "")
+    if not new_model:
+        raise HTTPException(400, "Model name is required")
+
+    config, config_path = _load_opencode(project_dir)
+    if config_path is None:
+        # Create project-level config.
+        config_path = project_dir / "opencode.jsonc"
+        config = {"model": new_model, "agent": {}}
+
+    if "agent" not in config:
+        config["agent"] = {}
+    if agent not in config["agent"]:
+        config["agent"][agent] = {}
+    config["agent"][agent]["model"] = new_model
+
+    config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+    return {"saved": True}
+
+
+@app.post("/api/projects/{name}/models/{agent}/test")
+def test_model(name: str, agent: str) -> dict:
+    """Test connectivity to the model configured for an agent."""
+    import time  # noqa: PLC0415
+
+    if agent not in _AGENT_NAMES:
+        raise HTTPException(400, f"Unknown agent: {agent}")
+
+    project_dir = PROJECTS_ROOT / name
+    if not project_dir.exists():
+        raise HTTPException(404, f"Project '{name}' not found")
+
+    config, _ = _load_opencode(project_dir)
+    default_model = config.get("model", "")
+    agent_config = config.get("agent", {}).get(agent, {})
+    model = agent_config.get("model", default_model)
+
+    if not model:
+        return {
+            "agent": agent,
+            "model": "",
+            "ok": False,
+            "error": "No model configured",
+            "latency_ms": None,
+        }
+
+    # Test by running opencode with --version or a minimal probe.
+    start = time.perf_counter()
+    try:
+        result = subprocess.run(
+            ["opencode", "version"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            encoding="utf-8",
+            errors="replace",
+        )
+        elapsed = int((time.perf_counter() - start) * 1000)
+        if result.returncode == 0:
+            return {
+                "agent": agent,
+                "model": model,
+                "ok": True,
+                "error": None,
+                "latency_ms": elapsed,
+            }
+        return {
+            "agent": agent,
+            "model": model,
+            "ok": False,
+            "error": result.stderr.strip() or "Non-zero exit",
+            "latency_ms": elapsed,
+        }
+    except FileNotFoundError:
+        return {
+            "agent": agent,
+            "model": model,
+            "ok": False,
+            "error": "opencode CLI not found on PATH",
+            "latency_ms": None,
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "agent": agent,
+            "model": model,
+            "ok": False,
+            "error": "Timeout (15s)",
+            "latency_ms": 15000,
+        }
+
+
 @app.get("/api/budget")
 def get_global_budget() -> dict:
     """Get global budget status."""
@@ -488,7 +639,9 @@ def dashboard() -> HTMLResponse:
 def serve_asset(path: str) -> Response:
     """Serve static assets with explicit MIME types."""
     file_path = (_ASSETS_DIR / path).resolve()
-    if not file_path.is_file() or not str(file_path).startswith(str(_ASSETS_DIR.resolve())):
+    if not file_path.is_file() or not str(file_path).startswith(
+        str(_ASSETS_DIR.resolve())
+    ):
         raise HTTPException(status_code=404, detail="Asset not found")
     media_type = _MIME_MAP.get(file_path.suffix.lower(), "application/octet-stream")
     return Response(content=file_path.read_bytes(), media_type=media_type)

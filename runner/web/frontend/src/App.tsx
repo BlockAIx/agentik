@@ -2,6 +2,7 @@ import { Controls } from "@/components/controls";
 import { Generator } from "@/components/generator";
 import { Graph } from "@/components/graph";
 import { Logs } from "@/components/logs";
+import { Models } from "@/components/models";
 import { Overview } from "@/components/overview";
 import { Review } from "@/components/review";
 import { RoadmapEditor } from "@/components/roadmap-editor";
@@ -26,6 +27,7 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import type { GlobalBudget, ProjectDetail, ProjectSummary } from "@/lib/api";
 import { api } from "@/lib/api";
 import {
+    Cpu,
     Eye,
     FileCode2,
     FileText,
@@ -148,7 +150,7 @@ export default function App(): React.JSX.Element {
             </div>
           ) : (
             <Tabs defaultValue="overview" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-8">
+              <TabsList className="grid w-full grid-cols-9">
                 <TabsTrigger value="overview" className="gap-1 text-xs">
                   <LayoutDashboard className="h-3.5 w-3.5" />
                   Overview
@@ -172,6 +174,10 @@ export default function App(): React.JSX.Element {
                 <TabsTrigger value="generator" className="gap-1 text-xs">
                   <Sparkles className="h-3.5 w-3.5" />
                   Generate
+                </TabsTrigger>
+                <TabsTrigger value="models" className="gap-1 text-xs">
+                  <Cpu className="h-3.5 w-3.5" />
+                  Models
                 </TabsTrigger>
                 <TabsTrigger value="review" className="gap-1 text-xs">
                   <Eye className="h-3.5 w-3.5" />
@@ -200,6 +206,9 @@ export default function App(): React.JSX.Element {
               </TabsContent>
               <TabsContent value="generator">
                 <Generator projectName={selected} />
+              </TabsContent>
+              <TabsContent value="models">
+                <Models projectName={selected} />
               </TabsContent>
               <TabsContent value="review">
                 <Review projectName={selected} detail={detail} />

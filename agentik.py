@@ -1,14 +1,18 @@
 """agentik.py — Entry point. All logic lives in the runner/ package.
 
 Run with:
-    python agentik.py
+    python agentik.py           Launch the web UI dashboard (default).
+    python agentik.py --web     Same as above (explicit).
 or, after pip install -e .:
     agentik
 
 CLI flags:
+    --web           Launch the web UI dashboard (default when no flags given).
+    --pipeline      Run the interactive pipeline (was the old default).
     --dry-run       Walk the dependency graph and estimate cost without running.
     --graph-html    Generate an interactive HTML dependency graph.
-    --web           Launch the web UI dashboard.
+    --host HOST     Web UI host (default: 127.0.0.1).
+    --port PORT     Web UI port (default: 8420).
 """
 
 import sys
@@ -18,14 +22,10 @@ def _cli() -> None:
     """Parse CLI flags and delegate to the appropriate mode."""
     args = sys.argv[1:]
 
-    if "--web" in args:
-        try:
-            from runner.web.app import start_server
+    if "--pipeline" in args:
+        from runner import main
 
-            start_server()
-        except ImportError as e:
-            print(f"Error: {e}")
-            sys.exit(1)
+        main()
         return
 
     if "--dry-run" in args or "--dryrun" in args:
@@ -54,10 +54,25 @@ def _cli() -> None:
         generate_graph_html(project_dir)
         return
 
-    # Default: interactive pipeline.
-    from runner import main
+    # Default: web UI dashboard (standalone).
+    host = "127.0.0.1"
+    port = 8420
+    if "--host" in args:
+        idx = args.index("--host")
+        if idx + 1 < len(args):
+            host = args[idx + 1]
+    if "--port" in args:
+        idx = args.index("--port")
+        if idx + 1 < len(args):
+            port = int(args[idx + 1])
 
-    main()
+    try:
+        from runner.web.app import start_server
+
+        start_server(host=host, port=port)
+    except ImportError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

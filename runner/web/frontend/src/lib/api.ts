@@ -77,19 +77,18 @@ export interface GlobalBudget {
   max_parallel: number
 }
 
-export interface DryRunResult {
-  remaining_tasks: number
-  total_tasks: number
-  completed_tasks: number
-  estimated_tokens: number
-  estimated_usd: number
-  estimated_time_sec: number
-  task_breakdown: Array<{
-    task: string
-    tokens: number
-    usd: number
-    type: string
-  }>
+export interface ModelConfig {
+  agent: string
+  model: string
+  max_steps: number
+}
+
+export interface ModelTestResult {
+  agent: string
+  model: string
+  ok: boolean
+  error: string | null
+  latency_ms: number | null
 }
 
 const BASE = ""
@@ -152,7 +151,20 @@ export const api = {
 
   getDiff: (name: string) => fetchJson<{ diff: string; status: string }>(`/api/projects/${name}/diff`),
 
-  getDryRun: (name: string) => fetchJson<DryRunResult>(`/api/projects/${name}/dryrun`),
-
   getGlobalBudget: () => fetchJson<GlobalBudget>("/api/budget"),
+
+  getModels: (name: string) =>
+    fetchJson<ModelConfig[]>(`/api/projects/${name}/models`),
+
+  updateModel: (name: string, agent: string, model: string) =>
+    fetchJson<{ saved: boolean }>(`/api/projects/${name}/models/${agent}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model }),
+    }),
+
+  testModel: (name: string, agent: string) =>
+    fetchJson<ModelTestResult>(`/api/projects/${name}/models/${agent}/test`, {
+      method: "POST",
+    }),
 }

@@ -166,4 +166,10 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  button, [role="button"], a, select, [data-state], [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
+  button:disabled, [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }

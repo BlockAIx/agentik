@@ -1,20 +1,39 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import type { GlobalBudget, ProjectDetail } from "@/lib/api";
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 import {
-    Activity,
-    CheckCircle2,
-    Clock,
-    Coins,
-    Layers,
-    Zap,
-} from "lucide-react";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import type { GlobalBudget, ProjectDetail } from "@/lib/api"
+import {
+  Activity,
+  CheckCircle2,
+  Clock,
+  Coins,
+  Layers,
+  Zap,
+} from "lucide-react"
 
-function formatTokens(n: number): string {
+function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+function fmtDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return iso;
+  }
 }
 
 interface OverviewProps {
@@ -29,11 +48,21 @@ export function Overview({ project, budget }: OverviewProps) {
   const blocked = tasks.filter((t) => t.status === "blocked").length;
   const pct = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
 
-  // Per-agent breakdown.
   const agentCounts: Record<string, number> = {};
   for (const t of tasks) {
     agentCounts[t.agent] = (agentCounts[t.agent] || 0) + 1;
   }
+
+  // Aggregate tokens per task from sessions.
+  const perTask: Record<string, { tokens: number; calls: number }> = {};
+  for (const s of project.budget.sessions) {
+    const key = s.task || "unknown";
+    if (!perTask[key]) perTask[key] = { tokens: 0, calls: 0 };
+    perTask[key].tokens += s.tokens;
+    perTask[key].calls += 1;
+  }
+  const taskUsage = Object.entries(perTask)
+    .sort(([, a], [, b]) => b.tokens - a.tokens);
 
   return (
     <div className="space-y-6">
@@ -94,7 +123,7 @@ export function Overview({ project, budget }: OverviewProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatTokens(project.budget.total_tokens)}
+              {fmt(project.budget.total_tokens)}
             </div>
             <p className="text-xs text-muted-foreground">
               {project.budget.total_calls} API calls
@@ -135,7 +164,7 @@ export function Overview({ project, budget }: OverviewProps) {
             )}
             {project.min_coverage && (
               <Badge variant="secondary">
-                Coverage ≥ {project.min_coverage}%
+                Coverage &ge; {project.min_coverage}%
               </Badge>
             )}
           </div>
@@ -169,21 +198,15 @@ export function Overview({ project, budget }: OverviewProps) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Monthly limit:</span>
-                <div className="font-medium">
-                  {formatTokens(budget.monthly_limit)}
-                </div>
+                <div className="font-medium">{fmt(budget.monthly_limit)}</div>
               </div>
               <div>
                 <span className="text-muted-foreground">Spent:</span>
-                <div className="font-medium">
-                  {formatTokens(budget.spent_tokens)}
-                </div>
+                <div className="font-medium">{fmt(budget.spent_tokens)}</div>
               </div>
               <div>
                 <span className="text-muted-foreground">Remaining:</span>
-                <div className="font-medium">
-                  {formatTokens(budget.remaining_tokens)}
-                </div>
+                <div className="font-medium">{fmt(budget.remaining_tokens)}</div>
               </div>
               <div>
                 <span className="text-muted-foreground">Max parallel:</span>
@@ -202,29 +225,104 @@ export function Overview({ project, budget }: OverviewProps) {
         </Card>
       )}
 
-      {/* Token usage per session (last 20) */}
+      {/* Token usage by task — clear table */}
+      {taskUsage.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Coins className="h-4 w-4" />
+              Token Usage by Task
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="max-h-[350px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task</TableHead>
+                    <TableHead className="text-right w-28">Tokens</TableHead>
+                    <TableHead className="text-right w-20">Calls</TableHead>
+                    <TableHead className="w-48">Share</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {taskUsage.map(([task, usage]) => {
+                    const share = project.budget.total_tokens > 0
+                      ? (usage.tokens / project.budget.total_tokens) * 100
+                      : 0;
+                    return (
+                      <TableRow key={task}>
+                        <TableCell className="text-xs font-medium truncate max-w-[200px]">
+                          {task.replace(/^## \d{3} - /, "")}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs">
+                          {fmt(usage.tokens)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs">
+                          {usage.calls}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                              <div
+                                className="h-full bg-chart-2 rounded-full transition-all"
+                                style={{ width: `${share}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground w-10 text-right">
+                              {share.toFixed(0)}%
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent sessions log */}
       {project.budget.sessions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Recent Token Usage</CardTitle>
+            <CardTitle className="text-sm">Recent API Sessions</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-end gap-1 h-32">
-              {project.budget.sessions.slice(-30).map((s, i) => {
-                const max = Math.max(
-                  ...project.budget.sessions.slice(-30).map((x) => x.tokens),
-                );
-                const h = max > 0 ? (s.tokens / max) * 100 : 0;
-                return (
-                  <div
-                    key={i}
-                    className="flex-1 bg-chart-1 rounded-t-sm min-w-1 hover:bg-chart-2 transition-colors"
-                    style={{ height: `${h}%` }}
-                    title={`${s.task}: ${formatTokens(s.tokens)} (${s.phase})`}
-                  />
-                );
-              })}
-            </div>
+          <CardContent className="p-0">
+            <ScrollArea className="max-h-[250px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Phase</TableHead>
+                    <TableHead className="text-right">Tokens</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...project.budget.sessions].reverse().slice(0, 30).map((s, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {fmtDate(s.timestamp)}
+                      </TableCell>
+                      <TableCell className="text-xs font-medium truncate max-w-[180px]">
+                        {(s.task || "\u2014").replace(/^## \d{3} - /, "")}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {s.phase}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs">
+                        {fmt(s.tokens)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
           </CardContent>
         </Card>
       )}
