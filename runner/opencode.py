@@ -14,6 +14,7 @@ from runner.config import (
     _LOG_TAIL_LINES,
     _PRICES,
     MONTHLY_LIMIT_TOKENS,
+    OPENCODE_CMD,
     PROJECTS_ROOT,
     ROADMAP_FILENAME,
     _console,
@@ -340,7 +341,7 @@ def _invoke_opencode(
         flags = f'--agent {agent} --dir "{dir_path}"' + (
             " --continue" if continue_session else ""
         )
-        cmd = f'opencode run "Execute the task in the attached file." {flags} -f "{tmpfile_posix}"'
+        cmd = f'{OPENCODE_CMD} run "Execute the task in the attached file." {flags} -f "{tmpfile_posix}"'
 
         # ── Per-invocation log file (timestamp-first for natural sort order) ─
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -696,7 +697,7 @@ def _is_copilot_only() -> bool:
 def _get_available_models() -> set[str] | None:
     """Run ``opencode models`` and return the set of model IDs, or None on failure."""
     result = subprocess.run(
-        "opencode models",
+        f"{OPENCODE_CMD} models",
         shell=True,
         capture_output=True,
         encoding="utf-8",
@@ -719,7 +720,9 @@ def check_models() -> None:
     with Live(spinner, console=_console, transient=True):
         available = _get_available_models()
     if available is None:
-        _console.print("[red bold]✗ opencode not found on PATH — install it first.[/]")
+        _console.print(
+            f"[red bold]✗ opencode ({OPENCODE_CMD}) not found on PATH — install it first.[/]"
+        )
         sys.exit(1)
 
     cfg = _load_opencode_config()

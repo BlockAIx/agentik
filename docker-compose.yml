@@ -1,0 +1,36 @@
+# ── agentik docker-compose ─────────────────────────────────────────────────────
+#
+# Usage:
+#   docker compose up          # web UI at http://localhost:8420
+#   docker compose up -d       # detached mode
+#   docker compose run agentik --pipeline   # interactive pipeline
+#
+# Configuration:
+#   Copy .env.example to .env and fill in your API keys.
+
+services:
+  agentik:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentik
+    ports:
+      - "${AGENTIK_PORT:-8420}:8420"
+    volumes:
+      # Mount your projects directory so data persists across restarts.
+      - ./projects:/app/projects
+      # Mount opencode config so you can edit models without rebuilding.
+      - ./opencode.jsonc:/app/opencode.jsonc:ro
+      - ./budget.json:/app/budget.json:ro
+    environment:
+      # opencode authentication — set in .env or pass directly.
+      - OPENCODE_API_KEY=${OPENCODE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      # Runner config.
+      - OPENCODE_CMD=${OPENCODE_CMD:-opencode}
+      - PYTHONUNBUFFERED=1
+    stdin_open: true    # needed for interactive --pipeline mode
+    tty: true           # needed for interactive --pipeline mode
+    restart: unless-stopped

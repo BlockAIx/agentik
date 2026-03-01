@@ -87,7 +87,13 @@ agentik/                     <- workspace root repo (runner tooling only)
 ├── agentik.py
 ├── budget.json             <- global token limits
 ├── opencode.jsonc          <- agent definitions (do NOT edit during a task)
+├── Dockerfile              <- full-stack Docker image
+├── docker-compose.yml      <- recommended way to run
+├── .env.example            <- template for API keys
 ├── prompts/                <- prompt templates (build.md, fix.md, ...)
+├── scripts/
+│   ├── start.sh            <- quick-start (Linux/macOS)
+│   └── start.ps1           <- quick-start (Windows)
 ├── helpers/                <- workspace-level utilities (importable by runner)
 │   └── check_roadmap.py    <- ROADMAP structural validator (run before pipeline)
 ├── runner/
@@ -538,8 +544,19 @@ The deploy script must exit non-zero on failure so the runner surfaces errors.
 ## Running the runner
 
 ```bash
-python runner.py   # from workspace root
+# Local (requires Python 3.12+, opencode on PATH)
+python agentik.py              # web UI (default)
+python agentik.py --pipeline   # interactive pipeline
+
+# Docker (recommended — everything bundled)
+./scripts/start.sh             # Linux/macOS
+.\scripts\start.ps1            # Windows
+docker compose up              # web UI at http://localhost:8420
+docker compose run agentik --pipeline   # interactive pipeline
 ```
+
+The opencode binary path is configurable via `OPENCODE_CMD` env var (default:
+`opencode`). Inside Docker this is set automatically.
 
 After selecting a project, choose a mode:
 

@@ -21,6 +21,7 @@ from runner.config import (
     MAX_ATTEMPTS,
     MAX_PARALLEL_AGENTS,
     MONTHLY_LIMIT_TOKENS,
+    OPENCODE_CMD,
     PROJECTS_ROOT,
     ROADMAP_FILENAME,
     _console,
@@ -509,7 +510,7 @@ def test_model(name: str, agent: str) -> dict:
     start = time.perf_counter()
     try:
         result = subprocess.run(
-            ["opencode", "version"],
+            [OPENCODE_CMD, "version"],
             capture_output=True,
             text=True,
             timeout=15,
@@ -537,7 +538,7 @@ def test_model(name: str, agent: str) -> dict:
             "agent": agent,
             "model": model,
             "ok": False,
-            "error": "opencode CLI not found on PATH. Install with: go install github.com/opencode-ai/opencode@latest",
+            "error": f"opencode CLI ({OPENCODE_CMD}) not found on PATH. Install with: curl -fsSL https://opencode.ai/install | bash",
             "latency_ms": None,
         }
     except subprocess.TimeoutExpired:

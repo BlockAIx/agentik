@@ -7,7 +7,7 @@ from pathlib import Path
 
 import questionary
 
-from runner.config import PROJECTS_ROOT, ROADMAP_FILENAME, _console
+from runner.config import OPENCODE_CMD, PROJECTS_ROOT, ROADMAP_FILENAME, _console
 
 _ROADMAP_GENERATION_PROMPT = """\
 You are an expert software architect. The user will describe a project in plain language.
@@ -177,7 +177,7 @@ def _call_architect(description: str, project_name: str) -> str | None:
         # Use opencode in non-interactive mode.
         tmpfile_posix = Path(tmpfile).resolve().as_posix()
         cmd = (
-            f'opencode run "Generate the ROADMAP.json as specified in the attached file. '
+            f'{OPENCODE_CMD} run "Generate the ROADMAP.json as specified in the attached file. '
             f'Output ONLY the JSON, no markdown fences." '
             f'--agent architect -f "{tmpfile_posix}"'
         )

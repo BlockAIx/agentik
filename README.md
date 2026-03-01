@@ -54,17 +54,39 @@ builds, and resume support built in.
 ### Prerequisites
 
 - **Python 3.12+**
-- [opencode](https://opencode.ai) installed and on PATH
+- [opencode](https://opencode.ai) installed and on PATH (or use Docker — see below)
 - An LLM provider configured in `opencode.jsonc` (e.g. GitHub Copilot,
   Anthropic, OpenAI)
 
-### Install
+### Install (local)
 
 ```bash
 git clone https://github.com/BlockAIx/agentik.git
 cd agentik
 pip install -r requirements.txt
 ```
+
+### Install (Docker — recommended)
+
+Docker bundles Python, opencode, Node.js, and all dependencies in a single
+image. No host-level installs required beyond Docker itself.
+
+```bash
+git clone https://github.com/BlockAIx/agentik.git
+cd agentik
+cp .env.example .env          # edit with your API keys
+./scripts/start.sh            # Linux/macOS
+.\scripts\start.ps1           # Windows PowerShell
+```
+
+Or use docker compose directly:
+
+```bash
+docker compose up              # web UI at http://localhost:8420
+docker compose run agentik --pipeline   # interactive pipeline
+```
+
+See [Docker setup](#docker-setup) below for full details.
 
 ### Create a project
 
@@ -160,6 +182,9 @@ For each task agentik executes:
 ```
 agentik/
 ├── agentik.py               # entry point
+├── Dockerfile               # full-stack Docker image
+├── docker-compose.yml       # recommended way to run
+├── .env.example             # template for API keys
 ├── runner/                  # pipeline engine
 │   ├── config.py            #   constants, Rich console, prompt loader
 │   ├── opencode.py          #   opencode invocation wrappers
@@ -178,6 +203,9 @@ agentik/
 │   └── web/                 #   web UI dashboard
 │       ├── app.py           #     FastAPI backend + REST API
 │       └── frontend/        #     React + Tailwind + shadcn SPA
+├── scripts/
+│   ├── start.sh             # quick-start script (Linux/macOS)
+│   └── start.ps1            # quick-start script (Windows)
 ├── helpers/
 │   └── check_roadmap.py     # ROADMAP structural validator
 ├── tests/                   # unit tests
@@ -485,6 +513,69 @@ When git is managed and a task exceeds `max_attempts_per_task`, the runner
 automatically hard-resets the feature branch to the last clean commit. This
 prevents broken code from accumulating on feature branches. Rollback only
 applies when `"git": {"enabled": true}` is set.
+
+## Docker setup
+
+agentik ships with a `Dockerfile` and `docker-compose.yml` that bundle the
+entire stack: Python 3.12, opencode CLI (Go binary), Node.js + pnpm, git, and
+the pre-built web UI.
+
+### Quick start
+
+```bash
+cp .env.example .env   # add your LLM API keys
+./scripts/start.sh     # builds + starts the web UI (Linux/macOS)
+.\scripts\start.ps1    # same for Windows PowerShell
+```
+
+### docker compose commands
+
+| Command | Description |
+|---------|-------------|
+| `docker compose up` | Build image + start web UI at `:8420` |
+| `docker compose up -d` | Detached mode |
+| `docker compose run --rm agentik --pipeline` | Interactive pipeline |
+| `docker compose run --rm agentik --dry-run` | Dry-run cost estimate |
+| `docker compose down` | Stop and remove containers |
+
+### Start script flags
+
+The scripts in `scripts/` wrap docker compose for convenience:
+
+| Flag | Description |
+|------|-------------|
+| *(none)* or `--web` | Build + start web UI |
+| `--pipeline` | Interactive pipeline mode |
+| `--build-only` | Build the Docker image only |
+| `--detach` / `-d` | Start web UI in background |
+| `--down` / `--stop` | Stop containers |
+
+### Environment variables
+
+Configure via `.env` (loaded automatically by docker compose):
+
+| Variable | Description |
+|----------|-------------|
+| `OPENCODE_API_KEY` | opencode auth token |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `GITHUB_TOKEN` | GitHub Copilot token |
+| `OPENCODE_CMD` | Override opencode binary path (default: `opencode`) |
+| `AGENTIK_PORT` | Web UI port (default: `8420`) |
+
+### Volumes
+
+The compose file mounts:
+- `./projects` → `/app/projects` — your project data persists on the host
+- `./opencode.jsonc` → `/app/opencode.jsonc` — edit models without rebuilding
+- `./budget.json` → `/app/budget.json` — adjust budgets without rebuilding
+
+### Building manually
+
+```bash
+docker build -t agentik .
+docker run -it --rm -v ./projects:/app/projects -p 8420:8420 agentik
+```
 
 ## Contributing
 

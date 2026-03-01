@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Python caches
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+*.egg-info
+
+# Project data (mounted at runtime)
+projects/
+
+# State files
+.budget_state.json
+.runner_state.json
+
+# Frontend dev artifacts (rebuilt in Docker)
+runner/web/frontend/node_modules
+runner/web/static
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore

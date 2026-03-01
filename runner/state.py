@@ -30,8 +30,10 @@ def get_token_stats() -> dict:
     Returns:
         Dict with keys ``input``, ``output``, ``cache_read``, ``cache_write``, ``total``.
     """
+    from runner.config import OPENCODE_CMD  # noqa: PLC0415
+
     result = subprocess.run(
-        "opencode stats",
+        f"{OPENCODE_CMD} stats",
         shell=True,
         capture_output=True,
         encoding="utf-8",

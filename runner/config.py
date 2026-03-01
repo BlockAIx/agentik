@@ -45,6 +45,12 @@ MAX_PARALLEL_AGENTS: int = _budget.get("max_parallel_agents", 1)
 MONTHLY_LIMIT_TOKENS: int = _budget["monthly_limit_tokens"]
 _PRICES: dict = _budget["token_prices_usd_per_million"]
 
+# ── opencode binary ────────────────────────────────────────────────────────────
+
+# Path or name of the opencode binary.  Override with OPENCODE_CMD env var
+# (e.g. inside Docker where it lives at a non-standard location).
+OPENCODE_CMD: str = os.environ.get("OPENCODE_CMD", "opencode")
+
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
 # Output root — every project lives in its own subdirectory here.
