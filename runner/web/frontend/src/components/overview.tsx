@@ -1,23 +1,23 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table"
+import { Tile } from "@/components/ui/tile"
 import type { ProjectDetail } from "@/lib/api"
 import {
-    Activity,
-    AlertTriangle,
-    CheckCircle2,
-    Coins,
-    Layers,
-    Zap,
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Coins,
+  Layers,
+  Zap,
 } from "lucide-react"
 
 function fmt(n: number): string {
@@ -197,106 +197,93 @@ export function Overview({ project, invalidModels }: OverviewProps) {
         </CardContent>
       </Card>
 
-      {/* Token usage by task — clear table */}
+      {/* Token usage by task */}
       {taskUsage.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Coins className="h-4 w-4" />
-              Token Usage by Task
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="max-h-87.5">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Task</TableHead>
-                    <TableHead className="text-right w-28">Tokens</TableHead>
-                    <TableHead className="text-right w-20">Calls</TableHead>
-                    <TableHead className="w-48">Share</TableHead>
+        <Tile
+          title={<><Coins className="h-4 w-4" />Token Usage by Task</>}
+          flush
+          maxH="350px"
+        >
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Task</TableHead>
+                <TableHead className="text-right w-28">Tokens</TableHead>
+                <TableHead className="text-right w-20">Calls</TableHead>
+                <TableHead className="w-48">Share</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {taskUsage.map(([task, usage]) => {
+                const share = project.budget.total_tokens > 0
+                  ? (usage.tokens / project.budget.total_tokens) * 100
+                  : 0;
+                return (
+                  <TableRow key={task}>
+                    <TableCell className="text-xs font-medium max-w-50 truncate">
+                      {task.replace(/^## \d{3} - /, "")}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {fmt(usage.tokens)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {usage.calls}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                          <div
+                            className="h-full bg-chart-2 rounded-full transition-all"
+                            style={{ width: `${share}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-10 text-right">
+                          {share.toFixed(0)}%
+                        </span>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {taskUsage.map(([task, usage]) => {
-                    const share = project.budget.total_tokens > 0
-                      ? (usage.tokens / project.budget.total_tokens) * 100
-                      : 0;
-                    return (
-                      <TableRow key={task}>
-                        <TableCell className="text-xs font-medium truncate max-w-50">
-                          {task.replace(/^## \d{3} - /, "")}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs">
-                          {fmt(usage.tokens)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs">
-                          {usage.calls}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
-                              <div
-                                className="h-full bg-chart-2 rounded-full transition-all"
-                                style={{ width: `${share}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-muted-foreground w-10 text-right">
-                              {share.toFixed(0)}%
-                            </span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Tile>
       )}
 
       {/* Recent sessions log */}
       {project.budget.sessions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Recent API Sessions</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="max-h-62.5">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Task</TableHead>
-                    <TableHead>Phase</TableHead>
-                    <TableHead className="text-right">Tokens</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...project.budget.sessions].reverse().slice(0, 30).map((s, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {fmtDate(s.timestamp)}
-                      </TableCell>
-                      <TableCell className="text-xs font-medium truncate max-w-45">
-                        {(s.task || "\u2014").replace(/^## \d{3} - /, "")}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {s.phase}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-xs">
-                        {fmt(s.tokens)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+        <Tile title="Recent API Sessions" flush maxH="260px">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Time</TableHead>
+                <TableHead>Task</TableHead>
+                <TableHead>Phase</TableHead>
+                <TableHead className="text-right">Tokens</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...project.budget.sessions].reverse().slice(0, 30).map((s, i) => (
+                <TableRow key={i}>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {fmtDate(s.timestamp)}
+                  </TableCell>
+                  <TableCell className="text-xs font-medium truncate max-w-45">
+                    {(s.task || "\u2014").replace(/^## \d{3} - /, "")}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {s.phase}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs">
+                    {fmt(s.tokens)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Tile>
       )}
     </div>
   );

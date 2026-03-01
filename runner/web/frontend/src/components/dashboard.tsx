@@ -8,17 +8,17 @@ import { useWebSocket } from "@/hooks/use-websocket"
 import type { GlobalBudget, ProjectSummary } from "@/lib/api"
 import { api } from "@/lib/api"
 import {
-  Activity,
-  ArrowRight,
-  Coins,
-  FolderOpen,
-  Layers,
-  Loader2,
-  Play,
-  Settings2,
-  Wifi,
-  WifiOff,
-  Zap,
+    Activity,
+    ArrowRight,
+    Coins,
+    FolderOpen,
+    Layers,
+    Loader2,
+    Play,
+    Settings2,
+    Wifi,
+    WifiOff,
+    Zap,
 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
@@ -54,7 +54,9 @@ export function Dashboard(): React.JSX.Element {
       ])
       setProjects(list)
       setBudget(b)
-      if (status.running) setPipelineProject(status.project)
+      // Always sync from the authoritative status — not just when running,
+      // so a stale "running" state gets cleared even if the WS event was missed.
+      setPipelineProject(status.running ? status.project : null)
     } catch (e) {
       console.error(e)
     } finally {

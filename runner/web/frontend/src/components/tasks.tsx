@@ -1,13 +1,13 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import type { ProjectDetail } from "@/lib/api";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import type { ProjectDetail } from "@/lib/api"
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -36,7 +36,7 @@ function statusBadge(status: string) {
 
 export function Tasks({ project }: { project: ProjectDetail }) {
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border overflow-auto max-h-[70vh]">
       <Table>
         <TableHeader>
           <TableRow>

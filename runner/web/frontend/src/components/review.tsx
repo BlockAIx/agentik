@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { ProjectDetail } from "@/lib/api";
 import { api } from "@/lib/api";
@@ -157,8 +156,11 @@ export function Review({
           </CardHeader>
           <CardContent>
             {diff.diff ? (
-              <ScrollArea className="h-[50vh] rounded-md border">
-                <pre className="p-4 text-xs font-mono whitespace-pre overflow-x-auto">
+              <div
+                className="overflow-y-auto rounded-md border bg-secondary/30"
+                style={{ maxHeight: "50vh" }}
+              >
+                <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-all">
                   {diff.diff.split("\n").map((line, i) => {
                     let color = "";
                     if (line.startsWith("+") && !line.startsWith("+++")) {
@@ -178,7 +180,7 @@ export function Review({
                     );
                   })}
                 </pre>
-              </ScrollArea>
+              </div>
             ) : (
               <div className="text-sm text-muted-foreground p-4 text-center">
                 No changes detected.

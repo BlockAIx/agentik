@@ -172,4 +172,33 @@ body {
   button:disabled, [aria-disabled="true"] {
     cursor: not-allowed;
   }
+
+  /* ── Scrollbar styling ─────────────────────────────────────────────────────
+     Thin, dark-themed scrollbars that blend with the app palette.
+     Firefox uses the shorthand; Webkit gets full control via pseudo-elements. */
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(217.2 32.6% 28%) transparent;
+  }
+
+  /* Webkit (Chrome, Edge, Safari) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(217.2 32.6% 28%);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(215 20.2% 45%);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }

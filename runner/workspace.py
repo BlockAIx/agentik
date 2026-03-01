@@ -956,4 +956,4 @@ def _project_status(proj: Path) -> tuple[str, str]:
     if done == 0:
         return "not started", f"0 / {total} tasks"
     remaining = total - done
-    return "in progress", f"{done} / {total} tasks · {remaining} remaining"
+    return "partial", f"{done} / {total} tasks · {remaining} remaining"
