@@ -111,11 +111,12 @@ to check structure before starting the pipeline.
 
 ## Full example — block-stacking game (Python)
 
-A complete ROADMAP showing parallel tasks, milestone, git, and deployment:
+A complete ROADMAP showing parallel tasks, milestone, git, deployment, and an
+AI opponent with realistic move animation:
 
 ```json
 {
-  "name": "BlockDrop v0.1",
+  "name": "BlockDrop",
   "ecosystem": "python",
   "preamble": "A Tetris-like block-stacking game.\n\n### Layers\n- **blockdrop/** — pure logic (no rendering, fully testable)\n- **tests/** — unit tests (no pygame)\n\n### Rules\n- No side-effects at import time.\n- All game state passed explicitly.",
   "git": { "enabled": true },
@@ -170,29 +171,48 @@ A complete ROADMAP showing parallel tasks, milestone, git, and deployment:
     },
     {
       "id": 6,
-      "title": "Alpha Milestone",
-      "agent": "milestone",
-      "depends_on": [5],
-      "version": "0.1.0",
-      "deploy": true,
-      "description": "All core logic delivered. Tag v0.1.0 and deploy."
-    },
-    {
-      "id": 7,
       "title": "Pygame Renderer",
       "depends_on": [5],
       "context": ["blockdrop/game.py"],
       "outputs": ["blockdrop/renderer.py", "blockdrop/__main__.py"],
       "acceptance": "python -m blockdrop launches without errors",
-      "description": "Visual display using pygame. Reads Game state only — no logic."
+      "description": "Visual display using pygame. Reads Game state only — no logic.\n\n**Important UX constraint:** do **not** render a ghost/drop-preview piece. No shadow, no landing guide, no translucent outline showing where the active piece will land. The board should show only the locked cells and the active falling piece."
+    },
+    {
+      "id": 7,
+      "title": "Alpha Milestone",
+      "agent": "milestone",
+      "depends_on": [6],
+      "version": "0.1.0",
+      "deploy": true,
+      "description": "All core logic delivered. Tag v0.1.0 and deploy."
+    },
+    {
+      "id": 8,
+      "title": "AI Opponent Race",
+      "depends_on": [7],
+      "context": [
+        "blockdrop/game.py",
+        "blockdrop/board.py",
+        "blockdrop/pieces.py",
+        "blockdrop/controller.py",
+        "blockdrop/renderer.py",
+        "blockdrop/__main__.py"
+      ],
+      "outputs": [
+        "blockdrop/ai.py",
+        "blockdrop/renderer.py",
+        "blockdrop/__main__.py"
+      ],
+      "acceptance": "python -m blockdrop launches a split-screen showing two boards side by side: player on the left (keyboard-controlled), AI on the right (auto-playing), both racing to top score",
+      "description": "Add an AI opponent that plays a second parallel game visible alongside the player's game.\n\n### What to build\n\n**`blockdrop/ai.py` — `AIPlayer` class (pure logic, no pygame)**\n- Implements a classic Tetris heuristic AI using a weighted evaluation of candidate placements.\n- For each possible (column, rotation) placement of the current piece, simulate dropping it and score the resulting board using these heuristics (weighted sum):\n  - **Aggregate height** (sum of column heights) — penalise high stacks.\n  - **Complete lines** — reward clears.\n  - **Holes** (empty cells with a filled cell above them) — penalise heavily.\n  - **Bumpiness** (sum of absolute height differences between adjacent columns) — penalise uneven surfaces.\n- Default weights: height=-0.51, lines=+0.76, holes=-0.36, bumpiness=-0.18 (classic values).\n- `AIPlayer.choose_action(game: Game) -> None` computes the best `(target_col, num_rotations)` and stores the resulting move sequence as an internal action queue (a `deque` of callables or `(\"rotate\"|\"left\"|\"right\")` tokens). Call this once when a new piece spawns.\n- `AIPlayer.step(game: Game) -> bool` pops and executes the **next single action** from the queue (one rotation or one column shift). Returns `True` while moves remain, `False` when the queue is empty (piece is now in position and falls naturally with gravity — **no hard-drop**). The main loop calls `step()` on a fixed timer so moves are visible one at a time.\n\n**Realistic AI speed — critical constraint:**\nThe AI must **not** teleport pieces instantly. It executes one move per `AI_MOVE_INTERVAL` (≈ 120 ms). The piece then falls with normal gravity, exactly like the player's piece. This makes the AI look human-paced and gives the player a fair chance to watch and react.\n- `AI_MOVE_INTERVAL = 120` ms (constant in `__main__.py`, tunable).\n- Implement with a dedicated `ai_move_timer` accumulated in the game loop: fire `ai_player.step(ai_game)` only when `ai_move_timer >= AI_MOVE_INTERVAL`, then reset the timer.\n- Never call `step()` more than once per timer tick.\n- Never hard-drop or loop until placed — the piece must visibly slide and rotate one step at a time before gravity takes over.\n\n**`blockdrop/renderer.py` — extend `Renderer`**\n- `render(surface, game, offset_x=0)` — add an `offset_x` parameter (pixels) so the board can be drawn anywhere horizontally. All existing draw calls shift by `offset_x`.\n- Add a `label` parameter to `render` (string, default `\"\"`) displayed centred above the board.\n- **No ghost/drop-preview piece** — same constraint as task 6; do not add one here either.\n- No other changes to existing rendering logic.\n\n**`blockdrop/__main__.py` — split-screen main loop**\n- Create two `Game` instances: `player_game` and `ai_game`, each with a fresh independent `_random_piece` generator.\n- Create one `AIPlayer` instance. On every new piece spawn for `ai_game`, call `ai_player.choose_action(ai_game)` to queue the move sequence.\n- Window width = `2 * board_width * cell_size + gap` (gap = 20 px between boards). Window title: `\"BlockDrop — Player vs AI\"`.\n- Player board drawn at `offset_x = 0`, AI board drawn at `offset_x = board_width * cell_size + gap`.\n- A thin vertical separator line is drawn between the boards.\n- Each board shows its label (`\"PLAYER\"` / `\"AI\"`) and stats (score, level, lines).\n- AI move timer: accumulate `dt` each frame; when `ai_move_timer >= AI_MOVE_INTERVAL` call `ai_player.step(ai_game)` once and reset the timer.\n- When both games are over, display `\"PLAYER WINS!\"` or `\"AI WINS!\"` (or `\"DRAW\"`) centred on the full window based on score comparison.\n- When only the player's game is over, keep rendering the AI side live.\n- Keyboard controls unchanged (arrow keys control player only)."
     }
   ]
 }
 ```
 
-**Parallel tasks:** 1 (Pieces) has `depends_on: []` and runs alone as the first
-task. Tasks 2 (Board Grid) and 3 (Scoring Engine) both depend on 1 and run in
-parallel, then 4, then 5, then 6 (milestone, sequential), then 7.
+**Parallel tasks:** task 1 runs alone (root). Tasks 2 and 3 both depend on 1
+and run in parallel. Then 4, 5, 6, 7 (milestone, sequential), 8.
 
 **Dependency graph:**
 
@@ -201,6 +221,18 @@ Layer 0:  [1] Piece Definitions
 Layer 1:  [2] Board Grid  ·  [3] Scoring Engine     ← parallel
 Layer 2:  [4] Piece Controller
 Layer 3:  [5] Game Orchestrator
-Layer 4:  [6] Alpha Milestone                        ← tags v0.1.0, deploys
-Layer 5:  [7] Pygame Renderer
+Layer 4:  [6] Pygame Renderer
+Layer 5:  [7] Alpha Milestone                        ← tags v0.1.0, deploys
+Layer 6:  [8] AI Opponent Race
 ```
+
+**Design notes:**
+
+- **No ghost piece** — the renderer must never draw a drop-preview shadow.
+  This is a deliberate UX choice for a cleaner visual; specify it explicitly
+  so build agents don't add one "helpfully".
+- **Realistic AI pacing** — the AI executes one move every `AI_MOVE_INTERVAL`
+  (≈ 120 ms) and lets the piece fall with normal gravity afterward. Never
+  use a hard-drop or an instant teleport. Specifying the timer variable name
+  and interval in the description pins the implementation and prevents the
+  agent from choosing a trivially fast loop.
