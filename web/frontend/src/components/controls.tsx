@@ -44,7 +44,6 @@ export function Controls({
   const stopMutation = useStopPipeline()
   const invalidate = useInvalidateProject()
 
-  /* WS subscription for live log lines + pipeline events */
   const handleWs = useCallback(
     (msg: { event: string; [k: string]: unknown }) => {
       if (msg.event === "pipeline_started" && msg.project === projectName) {
@@ -222,7 +221,6 @@ export function Controls({
         </CardContent>
       </Card>
 
-      {/* Live log output panel */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm">Live Pipeline Output</CardTitle>

@@ -190,61 +190,65 @@ export function Review({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {diff.diff ? (
-              (() => {
-                const files = parseStatusFiles(diff.status)
-                const byFile = splitDiffByFile(diff.diff)
-                const activeContent: string | null = selectedFile
-                  ? (byFile[selectedFile] ?? null)
-                  : diff.diff
+            {(() => {
+              const files = parseStatusFiles(diff.status)
+              const byFile = splitDiffByFile(diff.diff ?? "")
+              const activeContent: string | null = selectedFile
+                ? (byFile[selectedFile] ?? null)
+                : (diff.diff || null)
+
+              if (!files.length && !diff.diff) {
                 return (
-                  <div className="flex rounded-md border overflow-hidden" style={{ maxHeight: "55vh" }}>
-                    {/* File list sidebar */}
-                    {files.length > 0 && (
-                      <div className="w-52 shrink-0 border-r overflow-y-auto">
+                  <div className="text-sm text-muted-foreground p-4 text-center">
+                    No changes detected.
+                  </div>
+                )
+              }
+
+              return (
+                <div className="flex rounded-md border overflow-hidden" style={{ maxHeight: "55vh" }}>
+                  {files.length > 0 && (
+                    <div className="w-52 shrink-0 border-r overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFile(null)}
+                        className={cn(
+                          "w-full text-left px-3 py-1.5 text-xs font-medium border-b transition-colors",
+                          selectedFile === null
+                            ? "bg-secondary text-foreground"
+                            : "text-muted-foreground hover:bg-secondary/50",
+                        )}
+                      >
+                        All files
+                      </button>
+                      {files.map(({ marker, file }) => (
                         <button
+                          key={file}
                           type="button"
-                          onClick={() => setSelectedFile(null)}
+                          onClick={() => setSelectedFile(file === selectedFile ? null : file)}
                           className={cn(
-                            "w-full text-left px-3 py-1.5 text-xs font-medium border-b transition-colors",
-                            selectedFile === null
-                              ? "bg-secondary text-foreground"
-                              : "text-muted-foreground hover:bg-secondary/50",
+                            "w-full text-left px-3 py-1.5 flex items-start gap-1.5 transition-colors",
+                            selectedFile === file
+                              ? "bg-secondary"
+                              : "hover:bg-secondary/50",
                           )}
                         >
-                          All files
+                          <span className={cn("text-xs font-mono font-bold shrink-0 mt-0.5 w-4", markerColor(marker))}>
+                            {marker || "?"}
+                          </span>
+                          <span className="text-xs font-mono break-all leading-tight text-foreground">
+                            {file.includes("/") ? file.split("/").slice(-1)[0] : file}
+                          </span>
                         </button>
-                        {files.map(({ marker, file }) => (
-                          <button
-                            key={file}
-                            type="button"
-                            onClick={() => setSelectedFile(file === selectedFile ? null : file)}
-                            className={cn(
-                              "w-full text-left px-3 py-1.5 flex items-start gap-1.5 transition-colors",
-                              selectedFile === file
-                                ? "bg-secondary"
-                                : "hover:bg-secondary/50",
-                            )}
-                          >
-                            <span className={cn("text-xs font-mono font-bold shrink-0 mt-0.5 w-4", markerColor(marker))}>
-                              {marker || "?"}
-                            </span>
-                            <span className="text-xs font-mono break-all leading-tight text-foreground">
-                              {file.includes("/")
-                                ? file.split("/").slice(-1)[0]
-                                : file}
-                            </span>
-                          </button>
-                        ))}
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex-1 overflow-auto">
+                    {activeContent === null ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground p-8 text-center">
+                        No diff available for this file.
                       </div>
-                    )}
-                    {/* Diff content */}
-                    <div className="flex-1 overflow-auto">
-                      {activeContent === null ? (
-                        <div className="h-full flex items-center justify-center text-xs text-muted-foreground p-8 text-center">
-                          No diff available for this file.
-                        </div>
-                      ) : (
+                    ) : (
                       <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-all">
                         {activeContent.split("\n").map((line, i) => {
                           let color = ""
@@ -253,10 +257,7 @@ export function Review({
                           else if (line.startsWith("-") && !line.startsWith("---"))
                             color = "text-destructive"
                           else if (line.startsWith("@@")) color = "text-info"
-                          else if (
-                            line.startsWith("diff ") ||
-                            line.startsWith("index ")
-                          )
+                          else if (line.startsWith("diff ") || line.startsWith("index "))
                             color = "text-muted-foreground"
                           return (
                             <span key={i} className={color}>
@@ -266,16 +267,11 @@ export function Review({
                           )
                         })}
                       </pre>
-                      )}
-                    </div>
+                    )}
                   </div>
-                )
-              })()
-            ) : (
-              <div className="text-sm text-muted-foreground p-4 text-center">
-                No changes detected.
-              </div>
-            )}
+                </div>
+              )
+            })()}
           </CardContent>
         </Card>
       )}

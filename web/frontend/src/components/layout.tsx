@@ -1,4 +1,3 @@
-/** Shared Layout shell — header, nav, WS status badge. */
 import { CreateProjectDialog } from "@/components/create-project"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,10 +9,9 @@ import { Link, useNavigate } from "react-router-dom"
 interface LayoutProps {
   children: React.ReactNode
   title?: string
-  /** Navigate to a fixed path when the back button is clicked. */
   backTo?: string
   backLabel?: string
-  /** When true, back button calls history.back() instead of navigating to a fixed path. */
+  /** Uses history.back() instead of a fixed path. */
   historyBack?: boolean
   badge?: React.ReactNode
   onCreated?: (name: string) => void

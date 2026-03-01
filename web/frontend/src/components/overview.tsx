@@ -49,7 +49,6 @@ export function Overview({ project, invalidModels }: OverviewProps) {
     agentCounts[t.agent] = (agentCounts[t.agent] || 0) + 1;
   }
 
-  // Aggregate tokens per task from sessions.
   const perTask: Record<string, { tokens: number; calls: number }> = {};
   for (const s of project.budget.sessions) {
     const key = s.task || "unknown";
@@ -75,7 +74,6 @@ export function Overview({ project, invalidModels }: OverviewProps) {
         </div>
       )}
 
-      {/* Running task banner */}
       {currentTaskInfo && (
         <div className="p-3 border border-success/20 bg-success/5 rounded-md flex items-center gap-3 text-sm">
           <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -93,7 +91,6 @@ export function Overview({ project, invalidModels }: OverviewProps) {
         </div>
       )}
 
-      {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -207,7 +204,6 @@ export function Overview({ project, invalidModels }: OverviewProps) {
         </Card>
       </div>
 
-      {/* Project info */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -245,7 +241,6 @@ export function Overview({ project, invalidModels }: OverviewProps) {
         </CardContent>
       </Card>
 
-      {/* Token usage by task */}
       {taskUsage.length > 0 && (
         <Tile
           title={<><Coins className="h-4 w-4" />Token Usage by Task</>}
@@ -298,7 +293,6 @@ export function Overview({ project, invalidModels }: OverviewProps) {
         </Tile>
       )}
 
-      {/* Recent sessions log */}
       {project.budget.sessions.length > 0 && (
         <Tile title="Recent API Sessions" flush maxH="260px">
           <Table>

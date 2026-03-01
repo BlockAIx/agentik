@@ -69,7 +69,6 @@ export function Dashboard(): React.JSX.Element {
   return (
     <Layout onCreated={handleProjectCreated}>
       <div className="space-y-6">
-        {/* ── KPI cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             title="Projects"
@@ -108,7 +107,6 @@ export function Dashboard(): React.JSX.Element {
           />
         </div>
 
-        {/* ── Budget bar ── */}
         {budget && (
           <Card>
             <CardContent className="pt-4 pb-3">
@@ -133,7 +131,6 @@ export function Dashboard(): React.JSX.Element {
           </Card>
         )}
 
-        {/* ── Project cards ── */}
         {projects.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
@@ -161,8 +158,6 @@ export function Dashboard(): React.JSX.Element {
     </Layout>
   )
 }
-
-/* ── KPI Card ── */
 
 function KpiCard({
   title,
@@ -194,8 +189,6 @@ function KpiCard({
     </Card>
   )
 }
-
-/* ── Project Card ── */
 
 function ProjectCard({
   project,
