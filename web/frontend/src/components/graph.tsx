@@ -2,11 +2,11 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { LayerInfo, ProjectDetail, TaskInfo } from "@/lib/api"
 import {
-    Background,
-    type Edge,
-    type Node,
-    ReactFlow,
-    ReactFlowProvider,
+  Background,
+  type Edge,
+  type Node,
+  ReactFlow,
+  ReactFlowProvider,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { useMemo } from "react"
@@ -16,9 +16,21 @@ const NODE_GAP_X = 40;
 const LAYER_HEIGHT = 120;
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  done: { bg: "#16a34a", border: "#15803d", text: "#ffffff" },
-  ready: { bg: "#ca8a04", border: "#a16207", text: "#ffffff" },
-  blocked: { bg: "#475569", border: "#334155", text: "#94a3b8" },
+  done: {
+    bg: "var(--success)",
+    border: "color-mix(in oklch, var(--success) 80%, black)",
+    text: "var(--success-foreground)",
+  },
+  ready: {
+    bg: "var(--warning)",
+    border: "color-mix(in oklch, var(--warning) 80%, black)",
+    text: "var(--warning-foreground)",
+  },
+  blocked: {
+    bg: "color-mix(in oklch, var(--muted-foreground) 50%, var(--background))",
+    border: "color-mix(in oklch, var(--muted-foreground) 35%, var(--background))",
+    text: "var(--muted-foreground)",
+  },
 };
 
 function getNodeColors(task: TaskInfo) {
@@ -81,7 +93,7 @@ function buildLayout(tasks: TaskInfo[], layers: LayerInfo[]): { nodes: Node[]; e
         id: `e${sourceId}-${targetId}`,
         source: sourceId,
         target: targetId,
-        style: { stroke: "#64748b", strokeWidth: 2 },
+        style: { stroke: "var(--muted-foreground)", strokeWidth: 2 },
         animated: task.status === "ready",
       });
     }
@@ -108,7 +120,7 @@ function GraphInner({ project }: { project: ProjectDetail }) {
       nodesConnectable={false}
       elementsSelectable={false}
     >
-      <Background color="#334155" gap={20} />
+      <Background color="color-mix(in oklch, var(--muted-foreground) 35%, var(--background))" gap={20} />
     </ReactFlow>
   );
 }
@@ -123,10 +135,10 @@ export function Graph({ project }: { project: ProjectDetail }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <Badge variant="default" className="bg-green-600">
+        <Badge variant="default" className="bg-success text-success-foreground">
           {done} Done
         </Badge>
-        <Badge variant="secondary" className="bg-yellow-600">
+        <Badge variant="secondary" className="bg-warning text-warning-foreground">
           {ready} Ready
         </Badge>
         <Badge variant="outline">{blocked} Blocked</Badge>

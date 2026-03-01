@@ -174,7 +174,7 @@ export function RoadmapEditor({
         </div>
       )}
       {saveMsg && (
-        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm text-green-400 flex items-start gap-2">
+        <div className="p-3 bg-success/10 border border-success/20 rounded-md text-sm text-success flex items-start gap-2">
           <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
           {saveMsg}
         </div>
@@ -183,8 +183,8 @@ export function RoadmapEditor({
         <div
           className={`p-3 border rounded-md text-sm flex items-start gap-2 ${
             validateMsg.includes("valid")
-              ? "bg-green-500/10 border-green-500/20 text-green-400"
-              : "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
+              ? "bg-success/10 border-success/20 text-success"
+              : "bg-warning/10 border-warning/20 text-warning"
           }`}
         >
           <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />

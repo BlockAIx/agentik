@@ -35,10 +35,10 @@ function parseStatusFiles(status: string): StatusFile[] {
 }
 
 function markerColor(marker: string): string {
-  if (marker === "M" || marker === "MM") return "text-yellow-400"
-  if (marker === "A" || marker === "AM") return "text-green-400"
-  if (marker === "D") return "text-red-400"
-  if (marker === "R") return "text-blue-400"
+  if (marker === "M" || marker === "MM") return "text-warning"
+  if (marker === "A" || marker === "AM") return "text-success"
+  if (marker === "D") return "text-destructive"
+  if (marker === "R") return "text-info"
   if (marker === "??") return "text-muted-foreground"
   return "text-foreground"
 }
@@ -93,7 +93,7 @@ export function Review({
             <GitCommitHorizontal className="h-4 w-4" />
             Code Review
             {reviewEnabled ? (
-              <Badge variant="default" className="bg-green-600 text-xs">
+              <Badge variant="default" className="bg-success text-success-foreground text-xs">
                 Enabled
               </Badge>
             ) : (
@@ -135,7 +135,7 @@ export function Review({
             </div>
           )}
           {result && (
-            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm text-green-400">
+            <div className="p-3 bg-success/10 border border-success/20 rounded-md text-sm text-success">
               {result}
             </div>
           )}
@@ -144,7 +144,7 @@ export function Review({
             <Button
               variant="default"
               size="sm"
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success hover:bg-success/80 text-success-foreground"
               onClick={() => handleAction("approve")}
               disabled={reviewMutation.isPending || !reviewEnabled}
             >
@@ -249,10 +249,10 @@ export function Review({
                         {activeContent.split("\n").map((line, i) => {
                           let color = ""
                           if (line.startsWith("+") && !line.startsWith("+++"))
-                            color = "text-green-400"
+                            color = "text-success"
                           else if (line.startsWith("-") && !line.startsWith("---"))
-                            color = "text-red-400"
-                          else if (line.startsWith("@@")) color = "text-blue-400"
+                            color = "text-destructive"
+                          else if (line.startsWith("@@")) color = "text-info"
                           else if (
                             line.startsWith("diff ") ||
                             line.startsWith("index ")

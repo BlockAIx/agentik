@@ -4,28 +4,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
-    useAvailableModels,
-    useProviderLogin,
-    useProviderLogout,
-    useProviders,
-    useRefreshModels,
+  useAvailableModels,
+  useProviderLogin,
+  useProviderLogout,
+  useProviders,
+  useRefreshModels,
 } from "@/hooks/use-queries"
 import type { AvailableModel, ProviderInfo } from "@/lib/api"
 import {
-    AlertTriangle,
-    CheckCircle2,
-    ChevronDown,
-    ChevronRight,
-    ExternalLink,
-    Key,
-    Loader2,
-    LogIn,
-    LogOut,
-    RefreshCw,
-    Search,
-    Server,
-    Terminal,
-    Zap,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Key,
+  Loader2,
+  LogIn,
+  LogOut,
+  RefreshCw,
+  Search,
+  Server,
+  Terminal,
+  Zap,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -167,8 +167,8 @@ export function Providers(): React.JSX.Element {
                   className="flex items-center justify-between p-3 rounded-md border border-border bg-card"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-success" />
                     </div>
                     <div>
                       <p className="text-sm font-medium">{p.name}</p>
@@ -179,7 +179,7 @@ export function Providers(): React.JSX.Element {
                   </div>
                   <Badge
                     variant="outline"
-                    className="text-green-500 border-green-500/30 text-xs"
+                    className="text-success border-success/30 text-xs"
                   >
                     Connected
                   </Badge>
@@ -383,14 +383,14 @@ function ConnectGuide({
   }
 
   return (
-    <div className="rounded-md border border-blue-500/20 bg-blue-500/5 space-y-4 p-4">
+    <div className="rounded-md border border-info/20 bg-info/5 space-y-4 p-4">
       <div className="flex items-center gap-2">
-        <Terminal className="h-4 w-4 text-blue-400" />
+        <Terminal className="h-4 w-4 text-info" />
         <p className="text-sm font-medium">How to connect</p>
         {guide.in_docker && (
           <Badge
             variant="outline"
-            className="text-xs text-blue-400 border-blue-400/30"
+            className="text-xs text-info border-info/30"
           >
             Docker
           </Badge>
@@ -431,7 +431,7 @@ function ConnectGuide({
         href="https://github.com/login/device"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:underline"
+        className="inline-flex items-center gap-1.5 text-xs text-info hover:underline"
       >
         <ExternalLink className="h-3 w-3" />
         github.com/login/device
@@ -558,7 +558,7 @@ function ModelRow({ model }: { model: AvailableModel }): React.JSX.Element {
         <span
           className={`text-xs transition-opacity ${
             copied
-              ? "text-green-500 opacity-100"
+              ? "text-success opacity-100"
               : "text-muted-foreground opacity-0 group-hover:opacity-100"
           }`}
         >

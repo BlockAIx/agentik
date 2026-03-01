@@ -143,7 +143,7 @@ export function Controls({
             {pipelineActive && (
               <Badge
                 variant="outline"
-                className="gap-1 text-green-500 border-green-500/30 animate-pulse"
+                className="gap-1 text-success border-success/30 animate-pulse"
               >
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Running
@@ -178,7 +178,7 @@ export function Controls({
             </div>
           )}
           {message && (
-            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm text-green-400">
+            <div className="p-3 bg-success/10 border border-success/20 rounded-md text-sm text-success">
               {message}
             </div>
           )}
@@ -237,9 +237,9 @@ export function Controls({
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <div ref={logContainerRef} className="bg-zinc-950 rounded-b-lg font-mono text-xs text-green-400 h-115 overflow-y-auto p-3 border-t border-border">
+          <div ref={logContainerRef} className="bg-terminal rounded-b-lg font-mono text-xs text-terminal-foreground h-115 overflow-y-auto p-3 border-t border-border">
             {logs.length === 0 ? (
-              <span className="text-zinc-500">
+              <span className="text-terminal-muted">
                 {pipelineActive
                   ? "Starting pipeline..."
                   : "No output yet — click Run Pipeline to start."}

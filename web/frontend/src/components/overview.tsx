@@ -77,18 +77,18 @@ export function Overview({ project, invalidModels }: OverviewProps) {
 
       {/* Running task banner */}
       {currentTaskInfo && (
-        <div className="p-3 border border-green-500/20 bg-green-500/5 rounded-md flex items-center gap-3 text-sm">
+        <div className="p-3 border border-success/20 bg-success/5 rounded-md flex items-center gap-3 text-sm">
           <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
           </span>
-          <span className="text-xs font-medium text-green-400 shrink-0">Running</span>
+          <span className="text-xs font-medium text-success shrink-0">Running</span>
           <span className="font-medium truncate">{currentTaskInfo.title}</span>
           <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0">
             {currentTaskInfo.agent}
           </Badge>
           {state.attempt > 1 && (
-            <span className="text-xs text-yellow-400 shrink-0">attempt {state.attempt}</span>
+            <span className="text-xs text-warning shrink-0">attempt {state.attempt}</span>
           )}
         </div>
       )}
@@ -128,13 +128,13 @@ export function Overview({ project, invalidModels }: OverviewProps) {
             <div className="flex h-2 rounded-full bg-muted overflow-hidden">
               {done > 0 && (
                 <div
-                  className="h-full bg-green-600 transition-all"
+                  className="h-full bg-success transition-all"
                   style={{ width: `${donePct}%` }}
                 />
               )}
               {ready > 0 && (
                 <div
-                  className="h-full bg-yellow-600 transition-all"
+                  className="h-full bg-warning transition-all"
                   style={{ width: `${readyPct}%` }}
                 />
               )}
@@ -143,11 +143,11 @@ export function Overview({ project, invalidModels }: OverviewProps) {
             {/* Legend */}
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-green-600" />
+                <span className="h-2 w-2 rounded-full bg-success" />
                 {done} done
               </span>
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-yellow-600" />
+                <span className="h-2 w-2 rounded-full bg-warning" />
                 {ready} ready
               </span>
               <span className="flex items-center gap-1">

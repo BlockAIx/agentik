@@ -7,12 +7,12 @@ import { Separator } from "@/components/ui/separator"
 import { useBudgetConfig, useUpdateBudgetConfig } from "@/hooks/use-queries"
 import type { BudgetConfig } from "@/lib/api"
 import {
-    CheckCircle2,
-    Coins,
-    Loader2,
-    RotateCcw,
-    Save,
-    Settings2,
+  CheckCircle2,
+  Coins,
+  Loader2,
+  RotateCcw,
+  Save,
+  Settings2,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -98,7 +98,7 @@ export function GlobalConfig(): React.JSX.Element {
             </Badge>
           )}
           {saved && !isDirty && (
-            <Badge variant="default" className="bg-green-600 text-xs">
+            <Badge variant="default" className="bg-success text-success-foreground text-xs">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Saved
             </Badge>

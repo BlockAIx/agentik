@@ -3,23 +3,23 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-    useGlobalBudget,
-    useInvalidateProject,
-    usePipelineStatus,
-    useProjects,
+  useGlobalBudget,
+  useInvalidateProject,
+  usePipelineStatus,
+  useProjects,
 } from "@/hooks/use-queries"
 import type { ProjectSummary } from "@/lib/api"
 import { fmt } from "@/lib/format"
 import { useWsStore } from "@/stores/ws-store"
 import {
-    Activity,
-    ArrowRight,
-    Coins,
-    FolderOpen,
-    Layers,
-    Loader2,
-    Play,
-    Zap,
+  Activity,
+  ArrowRight,
+  Coins,
+  FolderOpen,
+  Layers,
+  Loader2,
+  Play,
+  Zap,
 } from "lucide-react"
 import { useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
@@ -178,7 +178,7 @@ function KpiCard({
   variant?: "default" | "active"
 }): React.JSX.Element {
   return (
-    <Card className={variant === "active" ? "border-green-500/30" : ""}>
+    <Card className={variant === "active" ? "border-success/30" : ""}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -219,7 +219,7 @@ function ProjectCard({
               {isRunning && (
                 <Badge
                   variant="outline"
-                  className="gap-1 text-green-500 border-green-500/30 text-xs animate-pulse"
+                  className="gap-1 text-success border-success/30 text-xs animate-pulse"
                 >
                   <Play className="h-2.5 w-2.5 fill-current" />
                   Running

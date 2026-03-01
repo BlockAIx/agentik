@@ -14,13 +14,13 @@ function statusBadge(status: string) {
   switch (status) {
     case "done":
       return (
-        <Badge variant="default" className="bg-green-600">
+        <Badge variant="default" className="bg-success text-success-foreground">
           Done
         </Badge>
       );
     case "ready":
       return (
-        <Badge variant="secondary" className="bg-yellow-600">
+        <Badge variant="secondary" className="bg-warning text-warning-foreground">
           Ready
         </Badge>
       );

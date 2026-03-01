@@ -133,7 +133,7 @@ export function Generator({
             </CardTitle>
             <div className="flex items-center gap-2">
               {accepted ? (
-                <Badge variant="default" className="bg-green-600">
+                <Badge variant="default" className="bg-success text-success-foreground">
                   <Check className="h-3 w-3 mr-1" />
                   Saved
                 </Badge>

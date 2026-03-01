@@ -97,7 +97,7 @@ export function Layout({
             {connected ? (
               <Badge
                 variant="outline"
-                className="gap-1 text-green-500 border-green-500/30"
+                className="gap-1 text-success border-success/30"
               >
                 <Wifi className="h-3 w-3" />
                 Live
