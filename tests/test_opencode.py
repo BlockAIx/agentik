@@ -214,6 +214,54 @@ class TestRunWithLog:
 
         assert rc == 42
 
+    def test_log_content_identical_regardless_of_echo(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Log files always receive the full output whether echo=True (verbose) or echo=False (compact).
+
+        This verifies the invariant that switching between verbose and compact CLI
+        modes does not reduce what is written to disk — the log is always the full
+        "verbose" transcript.
+        """
+        import sys
+
+        from runner.opencode import _run_with_log
+
+        script = (
+            "import sys; print('stdout line'); print('stderr line', file=sys.stderr)"
+        )
+        cmd = f'{sys.executable} -c "{script}"'
+
+        log_compact = tmp_path / "compact.log"
+        log_verbose = tmp_path / "verbose.log"
+
+        _run_with_log(cmd, log_compact, echo=False)
+        _run_with_log(cmd, log_verbose, echo=True)
+
+        compact_content = log_compact.read_text(encoding="utf-8")
+        verbose_content = log_verbose.read_text(encoding="utf-8")
+
+        # Both logs must contain all output lines.
+        assert "stdout line" in compact_content
+        assert "stdout line" in verbose_content
+        # stderr is merged into stdout via stderr=STDOUT — must appear in both.
+        assert "stderr line" in compact_content
+        assert "stderr line" in verbose_content
+        # The two log files must be byte-for-byte identical.
+        assert compact_content == verbose_content
+
+    def test_log_captures_stderr_in_compact_mode(self, tmp_path: Path) -> None:
+        """stderr is merged with stdout and captured in the log even when echo=False."""
+        import sys
+
+        from runner.opencode import _run_with_log
+
+        log = tmp_path / "stderr.log"
+        cmd = f"{sys.executable} -c \"import sys; print('err msg', file=sys.stderr)\""
+        _run_with_log(cmd, log, echo=False)
+
+        assert "err msg" in log.read_text(encoding="utf-8")
+
 
 # ── _tail_log ──────────────────────────────────────────────────────────────────────
 
