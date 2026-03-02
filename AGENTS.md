@@ -14,6 +14,12 @@ pipeline:
 Build → Deps → Test → Coverage → Fix (retry) → Static Checks → Static Fix (retry) → Commit → Notify → Deploy hook
 ```
 
+**Milestone tasks** follow a different pipeline:
+
+```
+Review → Milestone Fix (retry) → Re-test → Static Checks → Static Fix (retry) → Tag & Merge → Commit
+```
+
 **Your job as `build` / `fix`:** implement one task exactly as specified, then
 stop. Do not implement future tasks.
 
@@ -319,16 +325,19 @@ right agent for every other phase automatically. Models are in `opencode.jsonc`.
 | `build`     | ✅            | Implement module + unit tests + compact docstrings + README |
 | `fix`       | ✅            | Repair failing tests (continues build session)            |
 | `architect` | ❌            | Design / ADRs (use via task, not automatic)       |
-| `milestone` | ❌            | Review gate + semver tag on develop                  |
+| `milestone` | ❌            | Review gate + semver tag on develop (triggers fix on issues) |
 
 `architect` cannot write files or run commands — use it
 for thinking, then follow with a `build` task.
 
 `milestone` invokes a review agent that can **read files and run inspection
 commands** (`git log`, `git diff`, `cat`, `grep`, etc.) but cannot edit files or
-run destructive commands. When git is managed, the runner tags develop with
-semver and pushes to origin. Milestone tasks always run alone (never in
-parallel).
+run destructive commands. If the milestone verdict is **CONDITIONAL PASS** or
+**FAIL**, the runner automatically invokes the **fix agent** to address the
+reported issues (up to 2 attempts), re-runs tests to ensure nothing broke,
+then proceeds with static checks and tagging. When git is managed, the runner
+tags develop with semver and pushes to origin. Milestone tasks always run alone
+(never in parallel).
 
 ---
 

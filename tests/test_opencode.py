@@ -9,7 +9,6 @@ import pytest
 
 from runner.opencode import _strip_jsonc_comments
 
-
 # ── _strip_jsonc_comments ──────────────────────────────────────────────────────
 
 
@@ -73,16 +72,23 @@ class TestRunOpencodeMilestone:
     """Verify run_opencode_milestone builds the prompt and invokes the agent."""
 
     def test_builds_prompt_and_invokes(self, tmp_path: Path) -> None:
-        from runner.opencode import run_opencode_milestone
-
         # Minimal project structure
         import json as _json
+
+        from runner.opencode import run_opencode_milestone
+
         roadmap = {
             "name": "Demo v0.1",
             "ecosystem": "python",
             "preamble": "",
             "tasks": [
-                {"id": 1, "title": "Release", "agent": "milestone", "version": "0.1.0", "depends_on": []}
+                {
+                    "id": 1,
+                    "title": "Release",
+                    "agent": "milestone",
+                    "version": "0.1.0",
+                    "depends_on": [],
+                }
             ],
         }
         (tmp_path / "ROADMAP.json").write_text(_json.dumps(roadmap), encoding="utf-8")
@@ -98,20 +104,31 @@ class TestRunOpencodeMilestone:
         assert call_kwargs.kwargs["agent"] == "milestone"
         assert call_kwargs.kwargs["phase"] == "milestone"
         # Prompt should contain version and project name
-        prompt_arg = call_kwargs.args[0] if call_kwargs.args else call_kwargs.kwargs.get("prompt", "")
+        prompt_arg = (
+            call_kwargs.args[0]
+            if call_kwargs.args
+            else call_kwargs.kwargs.get("prompt", "")
+        )
         assert "0.1.0" in prompt_arg
         assert tmp_path.name in prompt_arg
 
     def test_skips_git_and_pycache(self, tmp_path: Path) -> None:
+        import json as _json
+
         from runner.opencode import run_opencode_milestone
 
-        import json as _json
         roadmap = {
             "name": "Demo",
             "ecosystem": "python",
             "preamble": "",
             "tasks": [
-                {"id": 1, "title": "Release", "agent": "milestone", "version": "0.1.0", "depends_on": []}
+                {
+                    "id": 1,
+                    "title": "Release",
+                    "agent": "milestone",
+                    "version": "0.1.0",
+                    "depends_on": [],
+                }
             ],
         }
         (tmp_path / "ROADMAP.json").write_text(_json.dumps(roadmap), encoding="utf-8")
@@ -135,52 +152,61 @@ class TestRunOpencodeMilestone:
 
 class TestRunWithLog:
     def test_writes_output_to_log(self, tmp_path: Path) -> None:
-        from runner.opencode import _run_with_log
         import sys
 
+        from runner.opencode import _run_with_log
+
         log = tmp_path / "out.log"
-        cmd = f'{sys.executable} -c "print(\'hello log\')"'
+        cmd = f"{sys.executable} -c \"print('hello log')\""
         rc = _run_with_log(cmd, log, echo=False)
 
         assert rc == 0
         assert log.exists()
         assert "hello log" in log.read_text(encoding="utf-8")
 
-    def test_echo_false_suppresses_stdout(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-        from runner.opencode import _run_with_log
+    def test_echo_false_suppresses_stdout(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         import sys
 
+        from runner.opencode import _run_with_log
+
         log = tmp_path / "out.log"
-        cmd = f'{sys.executable} -c "print(\'should not appear\')"'
+        cmd = f"{sys.executable} -c \"print('should not appear')\""
         _run_with_log(cmd, log, echo=False)
 
         captured = capsys.readouterr()
         assert "should not appear" not in captured.out
 
-    def test_echo_true_streams_to_stdout(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-        from runner.opencode import _run_with_log
+    def test_echo_true_streams_to_stdout(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         import sys
 
+        from runner.opencode import _run_with_log
+
         log = tmp_path / "out.log"
-        cmd = f'{sys.executable} -c "print(\'streamed output\')"'
+        cmd = f"{sys.executable} -c \"print('streamed output')\""
         _run_with_log(cmd, log, echo=True)
 
         captured = capsys.readouterr()
         assert "streamed output" in captured.out
 
     def test_creates_parent_dirs(self, tmp_path: Path) -> None:
-        from runner.opencode import _run_with_log
         import sys
 
+        from runner.opencode import _run_with_log
+
         log = tmp_path / "deep" / "nested" / "out.log"
-        cmd = f'{sys.executable} -c "print(\'nested dirs\')"'
+        cmd = f"{sys.executable} -c \"print('nested dirs')\""
         _run_with_log(cmd, log, echo=False)
 
         assert log.exists()
 
     def test_nonzero_exit_code_returned(self, tmp_path: Path) -> None:
-        from runner.opencode import _run_with_log
         import sys
+
+        from runner.opencode import _run_with_log
 
         log = tmp_path / "err.log"
         cmd = f'{sys.executable} -c "import sys; sys.exit(42)"'
@@ -193,7 +219,9 @@ class TestRunWithLog:
 
 
 class TestTailLog:
-    def test_prints_last_n_lines(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_prints_last_n_lines(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         from runner.opencode import _tail_log
 
         log = tmp_path / "test.log"
@@ -207,7 +235,9 @@ class TestTailLog:
         # Very early lines should not be present (only last 40)
         assert "line 0" not in out
 
-    def test_fewer_lines_than_tail(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_fewer_lines_than_tail(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         from runner.opencode import _tail_log
 
         log = tmp_path / "short.log"
@@ -230,18 +260,24 @@ class TestInvokeOpencodeLogBehavior:
 
     def _make_project(self, tmp_path: Path) -> Path:
         import json as _j
+
         project = tmp_path / "proj"
         project.mkdir()
         roadmap = {
-            "name": "P", "ecosystem": "python", "preamble": "",
+            "name": "P",
+            "ecosystem": "python",
+            "preamble": "",
             "tasks": [{"id": 1, "title": "T", "depends_on": []}],
         }
         (project / "ROADMAP.json").write_text(_j.dumps(roadmap), encoding="utf-8")
         return project
 
-    def _patch_invoke(self, monkeypatch: pytest.MonkeyPatch, rc: int = 0) -> "list[dict]":
+    def _patch_invoke(
+        self, monkeypatch: pytest.MonkeyPatch, rc: int = 0
+    ) -> "list[dict]":
         """Patch _run_with_log, get_token_stats, record_project_spend; return call-info list."""
         import runner.opencode as oc
+
         calls: list[dict] = []
 
         def fake_run(cmd: str, log_path: Path, *, echo: bool) -> int:
@@ -251,63 +287,113 @@ class TestInvokeOpencodeLogBehavior:
             return rc
 
         monkeypatch.setattr(oc, "_run_with_log", fake_run)
-        monkeypatch.setattr(oc, "get_token_stats", lambda: {"total": 0, "input": 0, "output": 0, "cache_read": 0, "cache_write": 0})
+        monkeypatch.setattr(
+            oc,
+            "get_token_stats",
+            lambda: {
+                "total": 0,
+                "input": 0,
+                "output": 0,
+                "cache_read": 0,
+                "cache_write": 0,
+            },
+        )
         monkeypatch.setattr(oc, "record_project_spend", lambda *a, **kw: 0)
         return calls
 
-    def test_compact_mode_echo_false(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_compact_mode_echo_false(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import runner.config as cfg
         import runner.opencode as oc
+
         monkeypatch.setattr(cfg, "_verbose", False)
         calls = self._patch_invoke(monkeypatch)
         project = self._make_project(tmp_path)
 
-        oc._invoke_opencode("prompt", agent="build", project_dir=project,
-                            continue_session=False, task="## 001 - Test", phase="build")
+        oc._invoke_opencode(
+            "prompt",
+            agent="build",
+            project_dir=project,
+            continue_session=False,
+            task="## 001 - Test",
+            phase="build",
+        )
         assert calls[0]["echo"] is False
 
-    def test_verbose_mode_echo_true(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_verbose_mode_echo_true(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import runner.config as cfg
         import runner.opencode as oc
+
         monkeypatch.setattr(cfg, "_verbose", True)
         calls = self._patch_invoke(monkeypatch)
         project = self._make_project(tmp_path)
 
-        oc._invoke_opencode("prompt", agent="build", project_dir=project,
-                            continue_session=False, task="## 001 - Test", phase="build")
+        oc._invoke_opencode(
+            "prompt",
+            agent="build",
+            project_dir=project,
+            continue_session=False,
+            task="## 001 - Test",
+            phase="build",
+        )
         assert calls[0]["echo"] is True
 
-    def test_capture_overrides_verbose(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_capture_overrides_verbose(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """capture=True must force echo=False even when verbose mode is on."""
         import runner.config as cfg
         import runner.opencode as oc
+
         monkeypatch.setattr(cfg, "_verbose", True)
         calls = self._patch_invoke(monkeypatch)
         project = self._make_project(tmp_path)
 
-        oc._invoke_opencode("prompt", agent="build", project_dir=project,
-                            continue_session=False, task="## 001 - Test", phase="build",
-                            capture=True)
+        oc._invoke_opencode(
+            "prompt",
+            agent="build",
+            project_dir=project,
+            continue_session=False,
+            task="## 001 - Test",
+            phase="build",
+            capture=True,
+        )
         assert calls[0]["echo"] is False
 
-    def test_log_filename_timestamp_first(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_log_filename_timestamp_first(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Log filename must start with a YYYYMMDD_HHMMSS timestamp."""
         import re as _re
+
         import runner.config as cfg
         import runner.opencode as oc
+
         monkeypatch.setattr(cfg, "_verbose", False)
         calls = self._patch_invoke(monkeypatch)
         project = self._make_project(tmp_path)
 
-        oc._invoke_opencode("prompt", agent="build", project_dir=project,
-                            continue_session=False, task="## 001 - Test", phase="build")
+        oc._invoke_opencode(
+            "prompt",
+            agent="build",
+            project_dir=project,
+            continue_session=False,
+            task="## 001 - Test",
+            phase="build",
+        )
         log_name = calls[0]["log_path"].name
         assert _re.match(r"^\d{8}_\d{6}_", log_name), f"unexpected log name: {log_name}"
 
-    def test_compact_failure_calls_tail_log(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_compact_failure_calls_tail_log(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """_tail_log must be called when rc != 0 in compact mode."""
         import runner.config as cfg
         import runner.opencode as oc
+
         monkeypatch.setattr(cfg, "_verbose", False)
         self._patch_invoke(monkeypatch, rc=1)
         project = self._make_project(tmp_path)
@@ -315,14 +401,23 @@ class TestInvokeOpencodeLogBehavior:
         tailed: list[Path] = []
         monkeypatch.setattr(oc, "_tail_log", lambda p: tailed.append(p))
 
-        oc._invoke_opencode("prompt", agent="build", project_dir=project,
-                            continue_session=False, task="## 001 - Test", phase="build")
+        oc._invoke_opencode(
+            "prompt",
+            agent="build",
+            project_dir=project,
+            continue_session=False,
+            task="## 001 - Test",
+            phase="build",
+        )
         assert len(tailed) == 1
 
-    def test_verbose_failure_no_tail(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_verbose_failure_no_tail(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """_tail_log must NOT be called in verbose mode (output already streamed)."""
         import runner.config as cfg
         import runner.opencode as oc
+
         monkeypatch.setattr(cfg, "_verbose", True)
         self._patch_invoke(monkeypatch, rc=1)
         project = self._make_project(tmp_path)
@@ -330,6 +425,118 @@ class TestInvokeOpencodeLogBehavior:
         tailed: list[Path] = []
         monkeypatch.setattr(oc, "_tail_log", lambda p: tailed.append(p))
 
-        oc._invoke_opencode("prompt", agent="build", project_dir=project,
-                            continue_session=False, task="## 001 - Test", phase="build")
+        oc._invoke_opencode(
+            "prompt",
+            agent="build",
+            project_dir=project,
+            continue_session=False,
+            task="## 001 - Test",
+            phase="build",
+        )
         assert tailed == []
+
+
+# ── find_latest_log ────────────────────────────────────────────────────────────
+
+
+class TestFindLatestLog:
+    def test_returns_latest_log_content(self, tmp_path: Path) -> None:
+        from runner.opencode import find_latest_log
+
+        log_dir = tmp_path / "logs" / "001-my-task"
+        log_dir.mkdir(parents=True)
+        (log_dir / "20260101_000000_milestone_a0.log").write_text("old log")
+        (log_dir / "20260102_000000_milestone_a0.log").write_text("new log")
+
+        result = find_latest_log(tmp_path, "## 001 - My Task", "milestone")
+        assert result == "new log"
+
+    def test_returns_none_when_no_logs(self, tmp_path: Path) -> None:
+        from runner.opencode import find_latest_log
+
+        result = find_latest_log(tmp_path, "## 001 - Missing", "milestone")
+        assert result is None
+
+    def test_returns_none_when_no_matching_phase(self, tmp_path: Path) -> None:
+        from runner.opencode import find_latest_log
+
+        log_dir = tmp_path / "logs" / "001-my-task"
+        log_dir.mkdir(parents=True)
+        (log_dir / "20260101_000000_build_a0.log").write_text("build log")
+
+        result = find_latest_log(tmp_path, "## 001 - My Task", "milestone")
+        assert result is None
+
+
+# ── parse_milestone_verdict ────────────────────────────────────────────────────
+
+
+class TestParseMilestoneVerdict:
+    def test_pass(self) -> None:
+        from runner.opencode import parse_milestone_verdict
+
+        assert parse_milestone_verdict("**Verdict: PASS.** All good.") == "pass"
+
+    def test_conditional_pass(self) -> None:
+        from runner.opencode import parse_milestone_verdict
+
+        log = "**Verdict: CONDITIONAL PASS.** The pipeline works but AppModule is not wired."
+        assert parse_milestone_verdict(log) == "conditional_pass"
+
+    def test_fail(self) -> None:
+        from runner.opencode import parse_milestone_verdict
+
+        assert parse_milestone_verdict("**Verdict: FAIL.** Tests broken.") == "fail"
+
+    def test_no_verdict_defaults_to_pass(self) -> None:
+        from runner.opencode import parse_milestone_verdict
+
+        assert parse_milestone_verdict("Just some log output, no verdict.") == "pass"
+
+    def test_multiple_verdicts_uses_last(self) -> None:
+        from runner.opencode import parse_milestone_verdict
+
+        log = "**Verdict: FAIL.** First.\n\n**Verdict: CONDITIONAL PASS.** Final."
+        assert parse_milestone_verdict(log) == "conditional_pass"
+
+    def test_case_insensitive(self) -> None:
+        from runner.opencode import parse_milestone_verdict
+
+        assert (
+            parse_milestone_verdict("**Verdict: conditional pass.**")
+            == "conditional_pass"
+        )
+
+
+# ── extract_milestone_issues ───────────────────────────────────────────────────
+
+
+class TestExtractMilestoneIssues:
+    def test_extracts_prioritised_issues_section(self) -> None:
+        from runner.opencode import extract_milestone_issues
+
+        log = (
+            "## Review\nAll fine.\n\n"
+            "### Prioritised Issues\n\n"
+            "| Priority | Issue |\n"
+            "|---|---|\n"
+            "| High | AppModule not wired |\n\n"
+            "**Verdict: CONDITIONAL PASS.**"
+        )
+        result = extract_milestone_issues(log)
+        assert "Prioritised Issues" in result
+        assert "AppModule not wired" in result
+
+    def test_fallback_window_around_verdict(self) -> None:
+        from runner.opencode import extract_milestone_issues
+
+        log = "Some context about issues.\n**Verdict: FAIL.** Bad things."
+        result = extract_milestone_issues(log)
+        assert "Verdict" in result
+
+    def test_fallback_tail_when_no_structure(self) -> None:
+        from runner.opencode import extract_milestone_issues
+
+        log = "Just a plain log with no verdict or headings."
+        result = extract_milestone_issues(log)
+        assert "plain log" in result

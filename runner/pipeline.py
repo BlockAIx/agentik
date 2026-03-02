@@ -14,8 +14,12 @@ from runner.config import (
 from runner.opencode import (
     ModelConfigError,
     check_monthly_budget,
+    extract_milestone_issues,
+    find_latest_log,
+    parse_milestone_verdict,
     run_opencode_build,
     run_opencode_milestone,
+    run_opencode_milestone_fix,
     run_opencode_static_fix,
     select_project,
 )
@@ -286,12 +290,17 @@ def process_task(
 # ── Milestone pipeline ─────────────────────────────────────────────────────────
 
 
+_MILESTONE_FIX_MAX_ATTEMPTS = 2
+
+
 def process_milestone(task: str, project_dir: Path) -> None:
-    """Process an ``agent: milestone`` task — review, merge to main, and tag.
+    """Process an ``agent: milestone`` task — review, fix issues, tag, and merge.
 
     Milestone tasks are barrier points: they never run in parallel.  The
-    milestone agent reviews the project state (read-only), then the runner
-    merges develop into main and creates a semver tag.
+    milestone agent reviews the project state (read-only).  If the verdict
+    is **CONDITIONAL PASS** or **FAIL** with actionable issues, the runner
+    invokes the fix agent to address them (up to
+    ``_MILESTONE_FIX_MAX_ATTEMPTS`` cycles), re-runs tests, and then tags.
     """
     _console.print()
     _console.rule(f"[bold magenta]{task}[/]  [dim](milestone)[/]", style="magenta")
@@ -305,12 +314,87 @@ def process_milestone(task: str, project_dir: Path) -> None:
         version = f"0.0.{int(m.group(1))}" if m else "0.0.0"
 
     check_monthly_budget(project_dir=project_dir)
-    _console.print(f"\n[bold][1/2] Milestone review[/]  [dim](v{version})[/]")
+    _console.print(f"\n[bold][1/4] Milestone review[/]  [dim](v{version})[/]")
     run_opencode_milestone(task, version, project_dir)
 
-    _console.print("\n[bold][2/2] Tag & merge[/]")
+    # ── Parse verdict and trigger fix if needed ───────────────────────────
+    log_content = find_latest_log(project_dir, task, "milestone")
+    verdict = parse_milestone_verdict(log_content) if log_content else "pass"
+
+    if verdict == "pass":
+        _console.print("[green]Milestone review: PASS[/]")
+    elif verdict == "conditional_pass":
+        _console.print("[yellow]Milestone review: CONDITIONAL PASS — issues found[/]")
+    else:
+        _console.print("[red]Milestone review: FAIL — issues found[/]")
+
+    if verdict in ("conditional_pass", "fail") and log_content:
+        issues_text = extract_milestone_issues(log_content)
+        _console.print(
+            f"\n[bold][2/4] Milestone fix[/]  "
+            f"[dim](up to {_MILESTONE_FIX_MAX_ATTEMPTS} attempts)[/]"
+        )
+
+        for fix_attempt in range(_MILESTONE_FIX_MAX_ATTEMPTS):
+            _console.print(
+                f"  [dim]Fix attempt {fix_attempt + 1}/{_MILESTONE_FIX_MAX_ATTEMPTS}[/]"
+            )
+            try:
+                run_opencode_milestone_fix(task, project_dir, issues_text)
+            except ModelConfigError:
+                _console.print(
+                    "[red bold]✗ Model error during milestone fix — skipping.[/]"
+                )
+                break
+
+            # Sync deps after fix in case imports changed.
+            install_project_dependencies(project_dir)
+
+            # Re-run tests to make sure fixes didn't break anything.
+            _console.print(f"\n[bold][3/4] Re-test[/]  [dim](after milestone fix)[/]")
+            passed, output = run_tests(project_dir)
+            if passed:
+                _console.print("[green]Tests still passing after milestone fix.[/]")
+                break
+            _console.print(
+                f"  [yellow]Tests failed after milestone fix "
+                f"(attempt {fix_attempt + 1}).[/]"
+            )
+            # Feed test failures as the new issues text for the next fix attempt.
+            issues_text = (
+                f"The previous milestone fix broke tests. "
+                f"Fix the test failures below AND the original milestone issues.\n\n"
+                f"## Test output\n```\n{output[-3000:] if output and len(output) > 3000 else (output or '')}\n```"
+            )
+        else:
+            _console.print(
+                "[yellow]⚠ Milestone fix attempts exhausted — proceeding with tag.[/]"
+            )
+    else:
+        _console.print("[dim]No fixes needed — skipping fix phase.[/]")
+
+    # ── Static checks after milestone fixes ───────────────────────────────
+    if verdict in ("conditional_pass", "fail") and log_content:
+        _console.print("\n[bold][3/4] Static checks[/]  [dim](after milestone fix)[/]")
+        for _attempt in range(_STATIC_FIX_MAX_ATTEMPTS):
+            ok, check_output = run_static_checks(project_dir)
+            if ok:
+                _console.print("[green]Static checks passed.[/]")
+                break
+            _console.print(
+                f"[yellow]Static analysis issues found "
+                f"(attempt {_attempt + 1}/{_STATIC_FIX_MAX_ATTEMPTS}).[/]"
+            )
+            run_opencode_static_fix(task, project_dir, check_output)
+        else:
+            _console.print(
+                "[yellow]⚠ Static analysis still failing after max attempts — proceeding.[/]"
+            )
+
+    _console.print("\n[bold][4/4] Tag & merge[/]")
     tag_milestone(version, project_dir)
     mark_done(task, project_dir)
+    commit_and_merge(task, project_dir)
     _console.print(f"\n[green bold]✔ Milestone:[/] {task} → v{version}")
 
 

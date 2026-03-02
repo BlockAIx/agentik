@@ -172,6 +172,15 @@ For each task agentik executes:
 | 9  | Notify   | Send webhook notification for pipeline events (if configured)          |
 | 10 | Deploy   | Runs deploy script if configured in ROADMAP (optional)                 |
 
+**Milestone tasks** follow a different pipeline:
+
+| #  | Phase          | What happens                                                         |
+|----|----------------|----------------------------------------------------------------------|
+| 1  | Review         | Milestone agent inspects project state (read-only)                   |
+| 2  | Milestone fix  | If verdict is CONDITIONAL PASS or FAIL → fix agent addresses issues  |
+| 3  | Static checks  | Lint & type checks after fixes (if any were applied)                 |
+| 4  | Tag & merge    | Semver tag on develop, merge, commit                                 |
+
 ## Project structure
 
 ```
@@ -206,7 +215,8 @@ agentik/
 │   ├── build.md
 │   ├── fix.md
 │   ├── static_fix.md
-│   └── milestone.md
+│   ├── milestone.md
+│   └── milestone_fix.md
 ├── AGENTS.md                # agent instructions for this workspace
 ├── LICENSE                  # MIT license
 ├── budget.json              # global limits and token price table
@@ -275,7 +285,7 @@ Defined in `opencode.jsonc`. agentik selects the right agent per phase;
 | `build`     | yes          | Implement module + unit tests + README update       |
 | `fix`       | yes          | Repair failing tests (continues build session)      |
 | `architect` | no           | Design / ADRs (use via task, not automatic)          |
-| `milestone` | no           | Review gate + semver tag on develop                  |
+| `milestone` | no           | Review gate + semver tag on develop (triggers fix on issues) |
 
 ## Budget and cost tracking
 

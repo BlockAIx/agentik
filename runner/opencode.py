@@ -615,6 +615,114 @@ def run_opencode_static_fix(task: str, project_dir: Path, check_output: str) -> 
     )
 
 
+def find_latest_log(project_dir: Path, task: str, phase: str) -> str | None:
+    """Return the content of the most recent log file for *task* and *phase*.
+
+    Scans ``logs/<task-slug>/`` for files matching ``*_<phase>_*.log`` and
+    returns the content of the newest one (by filename sort order, which is
+    chronological due to the timestamp prefix).  Returns ``None`` if no log
+    is found.
+    """
+    task_slug = re.sub(r"[^a-z0-9]+", "-", task.lower().lstrip("#").strip()).strip("-")[
+        :50
+    ]
+    log_dir = project_dir / "logs" / task_slug
+    if not log_dir.is_dir():
+        return None
+    candidates = sorted(log_dir.glob(f"*_{phase}_*.log"))
+    if not candidates:
+        return None
+    return candidates[-1].read_text(encoding="utf-8", errors="replace")
+
+
+_VERDICT_RE = re.compile(
+    r"\*{0,2}Verdict[:\s]*\*{0,2}\s*(CONDITIONAL\s+PASS|FAIL|PASS)",
+    re.IGNORECASE,
+)
+
+
+def parse_milestone_verdict(log_content: str) -> str:
+    """Extract the milestone verdict from log content.
+
+    Returns one of ``"pass"``, ``"conditional_pass"``, or ``"fail"``.
+    Defaults to ``"pass"`` when no verdict pattern is found (agent may not
+    have emitted one).
+    """
+    # Search from the end — the final verdict is the authoritative one.
+    matches = list(_VERDICT_RE.finditer(log_content))
+    if not matches:
+        return "pass"
+    raw = matches[-1].group(1).strip().upper()
+    if "CONDITIONAL" in raw:
+        return "conditional_pass"
+    if raw == "FAIL":
+        return "fail"
+    return "pass"
+
+
+def extract_milestone_issues(log_content: str) -> str:
+    """Extract the issues section from milestone log content.
+
+    Looks for headings like ``### Prioritised Issues`` or ``### Issues``
+    and returns everything from there to the next ``### `` heading or the
+    ``**Verdict`` line.  Falls back to the last 3 000 chars of the log if
+    no structured section is found.
+    """
+    # Try to find a structured issues section.
+    issue_start = re.search(
+        r"^#{1,3}\s*(?:Prioriti[sz]ed\s+)?Issues",
+        log_content,
+        re.MULTILINE | re.IGNORECASE,
+    )
+    if issue_start:
+        rest = log_content[issue_start.start() :]
+        # Find where the section ends (next heading or verdict).
+        end = re.search(r"\n#{1,3}\s|\*{2}Verdict", rest[1:])
+        section = rest[: end.start() + 1] if end else rest
+        return section.strip()
+
+    # Fallback: try to grab everything between "Issues" keyword and "Verdict".
+    verdict_match = _VERDICT_RE.search(log_content)
+    if verdict_match:
+        # Return a window around the verdict for context.
+        start = max(0, verdict_match.start() - 3000)
+        return log_content[start : verdict_match.end()].strip()
+
+    # Last resort: tail of the log.
+    return log_content[-3000:].strip()
+
+
+def run_opencode_milestone_fix(
+    task: str, project_dir: Path, milestone_report: str
+) -> int:
+    """Invoke the fix agent to address issues found by a milestone review.
+
+    Args:
+        task:              ROADMAP heading for the milestone task.
+        project_dir:       Project directory path.
+        milestone_report:  Extracted issues / verdict text from the milestone log.
+
+    Returns:
+        Token delta.
+    """
+    truncated = (
+        milestone_report[-4000:] if len(milestone_report) > 4000 else milestone_report
+    )
+    prompt = render_prompt(
+        "milestone_fix",
+        TASK=task,
+        MILESTONE_REPORT=truncated,
+    )
+    return _invoke_opencode(
+        prompt,
+        agent="fix",
+        project_dir=project_dir,
+        continue_session=False,
+        task=task,
+        phase="milestone_fix",
+    )
+
+
 def run_opencode_milestone(task: str, version: str, project_dir: Path) -> int:
     """Invoke the milestone agent to review the project before tagging; return token delta.
 
