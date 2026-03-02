@@ -333,7 +333,13 @@ def mark_done(task: str, project_dir: Path) -> None:
     """Add *task* to the completed list, record duration, and clear in-progress fields."""
     state = _raw_state(project_dir)
     if task not in _completed_tasks(state):
-        state["completed"].append({"task": task, "attempts": state["attempt"] + 1})
+        state["completed"].append(
+            {
+                "task": task,
+                "attempts": state["attempt"] + 1,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     # Compute elapsed wall-clock seconds and store for ETA estimation.
     started_at = state.get("task_started_at")
     if started_at:

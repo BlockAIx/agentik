@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { ProjectDetail } from "@/lib/api"
-import { fmt } from "@/lib/format"
+import { fmt, fmtDate } from "@/lib/format"
 
 function statusBadge(status: string) {
   switch (status) {
@@ -40,6 +40,7 @@ export function Tasks({ project }: { project: ProjectDetail }) {
             <TableHead className="w-24">Status</TableHead>
             <TableHead className="w-24">Agent</TableHead>
             <TableHead className="w-24 text-right">Tokens</TableHead>
+            <TableHead className="w-36">Completed</TableHead>
             <TableHead>Dependencies</TableHead>
           </TableRow>
         </TableHeader>
@@ -63,6 +64,9 @@ export function Tasks({ project }: { project: ProjectDetail }) {
               </TableCell>
               <TableCell className="text-right font-mono text-sm">
                 {task.tokens > 0 ? fmt(task.tokens) : "—"}
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                {task.completed_at ? fmtDate(task.completed_at) : "—"}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
                 {task.deps.length > 0

@@ -215,6 +215,13 @@ def get_project(name: str) -> dict:
         agent = get_task_agent(task, project_dir)
         tokens = task_tokens.get(task, 0)
 
+        # Look up completion timestamp from the completed list.
+        completed_at: str | None = None
+        for entry in state.get("completed", []):
+            if isinstance(entry, dict) and entry.get("task") == task:
+                completed_at = entry.get("completed_at")
+                break
+
         tasks_info.append(
             {
                 "id": task_id,
@@ -227,6 +234,7 @@ def get_project(name: str) -> dict:
                     (dm.group(1) if (dm := re.match(r"^## (\d{3})", d)) else d)
                     for d in deps
                 ],
+                "completed_at": completed_at,
             }
         )
 

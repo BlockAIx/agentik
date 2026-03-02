@@ -17,6 +17,7 @@ export interface TaskInfo {
   agent: string
   tokens: number
   deps: string[]
+  completed_at?: string | null
 }
 
 export interface LayerInfo {
