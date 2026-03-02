@@ -21,6 +21,10 @@ alternatives, omit requested libraries, or add competing ones. Wire the chosen
 stack into the root task's manifest, configuration files, and preamble so every
 subsequent task builds on it.
 
+**Use latest versions when unspecified.** If the description names a technology
+but does not pin a version (e.g. "use FastAPI" without "FastAPI 0.95"), default
+to the latest stable release. Find it if possible dynamically using package managers.
+
 **Output ONLY valid JSON** — no markdown fences, no commentary, no explanation.
 The output must pass `python check_roadmap.py` with zero errors.
 
