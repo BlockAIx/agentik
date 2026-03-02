@@ -88,9 +88,12 @@ Give it the architecture; let it write the code.
 - **Layer 1-N:** Feature tasks. Same-layer = parallel (disjoint outputs). Cross-layer when dependencies exist.
 - **Milestones:** `agent:"milestone"` at natural boundaries. Read-only review (no file writes). Must `depends_on` all reviewed tasks. Unique `depends_on` set. Include `version` field for semver tag. No `outputs`/`acceptance`.
 
+
 Honour user-specified milestones exactly — preserve names, versions, and ordering.
 
 Example: `T1:scaffold → T2,T3:features(parallel) → T4:integration → T5:milestone v0.1.0 → T6:more features → T7:milestone v0.2.0`
+
+If two or more user-specified milestones are consecutive in your design, merge them into one.
 
 ---
 
