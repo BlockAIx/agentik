@@ -11,7 +11,6 @@ services:
       - "5173:5173"  # Vite HMR
     volumes:
       - ./projects:/app/projects
-      - pnpm_store:/root/.local/share/pnpm/store
       - ./budget.json:/app/budget.json
 
       # Source mounts for hot-reloading
@@ -30,5 +29,7 @@ services:
       # Anonymous volume: keep container node_modules isolated from host.
       - /app/web/frontend/node_modules
 
-volumes:
-  pnpm_store:
+      # Named volumes for pnpm (inherited from base compose, re-declared for
+      # clarity — docker compose merges volume lists).
+      - pnpm_store:/pnpm-store
+      - pnpm_vstore:/pnpm-vstore

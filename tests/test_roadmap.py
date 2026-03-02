@@ -1,7 +1,9 @@
 """Tests for runner.roadmap -- ROADMAP.json parsing, graph resolution."""
 
 import json
+import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -817,3 +819,66 @@ class TestGetTaskLayers:
         assert layers[2] == ["## 003 - Alpha"]  # milestone barrier
         assert layers[3] == ["## 004 - Feature"]
         assert layers[4] == ["## 005 - Extension"]
+
+
+# -- run_tests timeout ---------------------------------------------------------
+
+
+class TestRunTestsTimeout:
+    """Verify that run_tests handles subprocess timeouts gracefully."""
+
+    def test_timeout_is_treated_as_failure(self, tmp_path: Path) -> None:
+        """A hanging test suite should fail, not block the pipeline forever."""
+        from runner.roadmap import run_tests
+
+        project = tmp_path / "proj"
+        project.mkdir()
+        pkg = {"scripts": {"test": "jest"}}
+        (project / "package.json").write_text(json.dumps(pkg), encoding="utf-8")
+
+        with patch(
+            "runner.roadmap.subprocess.run",
+            side_effect=subprocess.TimeoutExpired("jest", 300),
+        ):
+            passed, output = run_tests(project)
+
+        assert passed is False
+        assert "timed out" in output
+
+    def test_successful_run_still_works(self, tmp_path: Path) -> None:
+        from runner.roadmap import run_tests
+
+        project = tmp_path / "proj"
+        project.mkdir()
+        pkg = {"scripts": {"test": "jest"}}
+        (project / "package.json").write_text(json.dumps(pkg), encoding="utf-8")
+
+        fake_result = subprocess.CompletedProcess(
+            args="pnpm test", returncode=0, stdout="OK", stderr=""
+        )
+        with patch("runner.roadmap.subprocess.run", return_value=fake_result):
+            passed, output = run_tests(project)
+
+        assert passed is True
+        assert "OK" in output
+
+
+class TestRunStaticChecksTimeout:
+    """Verify that run_static_checks handles subprocess timeouts gracefully."""
+
+    def test_timeout_is_treated_as_failure(self, tmp_path: Path) -> None:
+        from runner.roadmap import run_static_checks
+
+        project = tmp_path / "proj"
+        project.mkdir()
+        (project / "package.json").write_text("{}", encoding="utf-8")
+        (project / "tsconfig.json").write_text("{}", encoding="utf-8")
+
+        with patch(
+            "runner.roadmap.subprocess.run",
+            side_effect=subprocess.TimeoutExpired("tsc", 300),
+        ):
+            passed, output = run_static_checks(project)
+
+        assert passed is False
+        assert "timed out" in output

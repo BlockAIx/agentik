@@ -531,6 +531,11 @@ def _detect_static_check_commands(project_dir: Path) -> list[tuple[str, str]]:
     return cmds
 
 
+# Timeout (seconds) for individual test and static-check commands.
+# Prevents the pipeline from blocking forever when a test runner hangs.
+_CMD_TIMEOUT = 300
+
+
 def run_tests(project_dir: Path) -> tuple[bool, str]:
     """Run all detected test suites and return `(all_passed, combined_output)`."""
     suites = _detect_active_test_suites(project_dir)
@@ -538,15 +543,23 @@ def run_tests(project_dir: Path) -> tuple[bool, str]:
     combined_output: list[str] = []
 
     for cmd, label in suites:
-        result = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            cwd=str(project_dir),
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                cwd=str(project_dir),
+                timeout=_CMD_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            msg = f"{label} timed out after {_CMD_TIMEOUT}s"
+            _console.print(f"[red]{msg}[/]")
+            combined_output.append(f"--- {label} ---\n{msg}")
+            all_passed = False
+            continue
         output = (result.stdout or "") + (result.stderr or "")
         _console.rule(f"[dim]{label} output[/]", style="bright_black")
         _console.print(output[-2000:].rstrip())
@@ -568,15 +581,23 @@ def run_static_checks(project_dir: Path) -> tuple[bool, str]:
     combined: list[str] = []
 
     for cmd, label in cmds:
-        result = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            cwd=str(project_dir),
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                cwd=str(project_dir),
+                timeout=_CMD_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            msg = f"{label} timed out after {_CMD_TIMEOUT}s"
+            _console.print(f"[red]{msg}[/]")
+            combined.append(f"--- {label} ---\n{msg}")
+            all_passed = False
+            continue
         output = (result.stdout or "") + (result.stderr or "")
         _console.rule(f"[dim]{label} output[/]", style="bright_black")
         _console.print(output[-2000:].rstrip())

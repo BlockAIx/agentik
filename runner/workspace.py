@@ -289,6 +289,12 @@ def _patch_tsconfig_for_tests(project_dir: Path) -> None:
 
 # ── Dependency installation ────────────────────────────────────────────────────
 
+# Docker bind-mount I/O optimisation:  /pnpm-vstore is a named Docker volume
+# (fast, native FS).  When present, pnpm's heavy virtual store (.pnpm/) is
+# redirected there so thousands of hardlinked files never hit the slow bind
+# mount.  The content-addressable store is also on a named volume (/pnpm-store).
+_PNPM_VSTORE_ROOT = Path("/pnpm-vstore")
+
 # Ordered list of (manifest filename, shell command template, display label).
 # All matching manifests are installed — a full-stack project may have several.
 # Placeholders expanded at call time:
@@ -307,6 +313,15 @@ _DEP_INSTALLERS: list[tuple[str, str, str]] = [
     ("go.mod", "go mod download", "go"),
     ("Cargo.toml", "cargo fetch", "cargo"),
 ]
+
+
+def _pnpm_vstore_args(project_dir: Path) -> str:
+    """Return ``--virtual-store-dir=...`` if the fast vstore volume exists."""
+    if not _PNPM_VSTORE_ROOT.is_dir():
+        return ""
+    vstore = _PNPM_VSTORE_ROOT / project_dir.name
+    vstore.mkdir(parents=True, exist_ok=True)
+    return f" --virtual-store-dir={vstore}"
 
 
 def _is_broken_symlink(path: Path) -> bool:
@@ -422,10 +437,15 @@ def install_project_dependencies(project_dir: Path) -> None:
         # After nuking a broken pnpm store, force a full re-download so pnpm
         # does not skip re-linking because the lockfile looks satisfied.
         if label == "pnpm" and force_pnpm:
-            cmd = "pnpm install --force"
+            cmd = "pnpm install --force" + _pnpm_vstore_args(project_dir)
             _console.print(
                 "[dim][[deps]][/] package.json → [cyan]pnpm install --force[/] ..."
             )
+        elif label == "pnpm":
+            vstore = _pnpm_vstore_args(project_dir)
+            if vstore:
+                cmd = cmd + vstore
+            _console.print(f"[dim][[deps]][/] {manifest_name} → [cyan]{label}[/] ...")
         else:
             _console.print(f"[dim][[deps]][/] {manifest_name} → [cyan]{label}[/] ...")
         result = subprocess.run(

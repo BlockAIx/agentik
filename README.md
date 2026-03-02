@@ -545,6 +545,14 @@ The compose file mounts:
 - `./projects` → `/app/projects` — your project data persists on the host
 - `./opencode.jsonc` → `/app/opencode.jsonc` — edit models without rebuilding
 - `./budget.json` → `/app/budget.json` — adjust budgets without rebuilding
+- `pnpm_store` → `/pnpm-store` — pnpm content-addressable store (named volume, persists across rebuilds)
+- `pnpm_vstore` → `/pnpm-vstore` — pnpm virtual stores per project (named volume)
+
+The `pnpm_store` and `pnpm_vstore` named volumes keep pnpm's heavy I/O off the
+bind-mounted projects directory. This is critical on **Windows and macOS** Docker
+where bind-mount performance is orders of magnitude slower than native
+filesystem access — without these volumes, `pnpm install` for Node/TS projects
+can take 10–30× longer.
 
 ### Building manually
 
