@@ -1,0 +1,34 @@
+# Dev mode override: mounts source for hot-reloading (Vite HMR + uvicorn).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  agentik:
+    # Override the entrypoint/command to run the dev servers.
+    entrypoint: ["bash", "/app/scripts/dev-entrypoint.sh"]
+    command: []
+    ports:
+      - "${AGENTIK_PORT:-8420}:8420"
+      - "5173:5173"  # Vite HMR
+    volumes:
+      - ./projects:/app/projects
+      - pnpm_store:/root/.local/share/pnpm/store
+      - ./budget.json:/app/budget.json
+
+      # Source mounts for hot-reloading
+      - ./web/__init__.py:/app/web/__init__.py
+      - ./web/app.py:/app/web/app.py
+      - ./web/_pipeline_worker.py:/app/web/_pipeline_worker.py
+      - ./runner:/app/runner
+      - ./helpers:/app/helpers
+      - ./prompts:/app/prompts
+      - ./agentik.py:/app/agentik.py
+      - ./opencode.jsonc:/app/opencode.jsonc:ro
+
+      - ./web/frontend:/app/web/frontend
+      - ./scripts:/app/scripts
+
+      # Anonymous volume: keep container node_modules isolated from host.
+      - /app/web/frontend/node_modules
+
+volumes:
+  pnpm_store:

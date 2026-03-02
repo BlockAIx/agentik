@@ -5,6 +5,7 @@
 #
 # Usage:
 #   ./scripts/start.sh                 # web UI (default)
+#   ./scripts/start.sh --dev           # dev mode with hot-reloading
 #   ./scripts/start.sh --pipeline      # interactive pipeline mode
 #   ./scripts/start.sh --build-only    # just build the image
 #
@@ -17,6 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="agentik"
 COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
+COMPOSE_DEV_FILE="$PROJECT_ROOT/docker-compose.dev.yml"
 
 cd "$PROJECT_ROOT"
 
@@ -76,6 +78,10 @@ case "$MODE" in
         info "Building Docker image..."
         docker compose -f "$COMPOSE_FILE" build
         ok "Image built successfully."
+        ;;
+    --dev)
+        info "Starting agentik in dev mode (hot-reload)..."
+        docker compose -f "$COMPOSE_FILE" -f "$COMPOSE_DEV_FILE" up --build
         ;;
     --pipeline)
         info "Starting agentik pipeline (interactive)..."

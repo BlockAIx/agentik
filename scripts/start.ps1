@@ -7,6 +7,7 @@
 
 .EXAMPLE
     .\scripts\start.ps1                 # web UI (default)
+    .\scripts\start.ps1 --dev           # dev mode with hot-reloading
     .\scripts\start.ps1 --pipeline      # interactive pipeline mode
     .\scripts\start.ps1 --build-only    # just build the image
 #>
@@ -18,6 +19,7 @@ param(
 $ErrorActionPreference = "Continue"   # don't auto-close on non-terminating errors
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 $ComposeFile = Join-Path $ProjectRoot "docker-compose.yml"
+$ComposeDevFile = Join-Path $ProjectRoot "docker-compose.dev.yml"
 
 Set-Location $ProjectRoot
 
@@ -55,6 +57,10 @@ switch ($Mode) {
         Info "Building Docker image..."
         docker compose -f $ComposeFile build
         Ok "Image built successfully."
+    }
+    "--dev" {
+        Info "Starting agentik in dev mode (hot-reload)..."
+        docker compose -f $ComposeFile -f $ComposeDevFile up --build
     }
     "--pipeline" {
         Info "Starting agentik pipeline (interactive)..."

@@ -78,16 +78,16 @@ COPY AGENTS.md README.md ROADMAP_EXAMPLE.md LICENSE ./
 # Create projects mount point.
 RUN mkdir -p projects
 
-# ── Pre-build the web frontend (if node_modules are present) ──────────────────
+# ── Pre-build the web frontend ─────────────────────────────────────────────────
+# Vite outputs directly to ../static (= /app/web/static/) via outDir config.
 COPY web/frontend/ web/frontend/
 RUN cd web/frontend \
     && corepack enable \
     && corepack prepare pnpm@latest --activate \
     && pnpm install --frozen-lockfile \
     && pnpm run build \
-    && mkdir -p /app/web/static \
-    && cp -r dist/* /app/web/static/ \
-    || echo "Frontend build skipped (optional)"
+    && test -f /app/web/static/index.html \
+    && echo "Frontend build OK — $(ls /app/web/static/assets/*.js | wc -l) JS chunks"
 
 # ── Runtime ────────────────────────────────────────────────────────────────────
 EXPOSE 8420

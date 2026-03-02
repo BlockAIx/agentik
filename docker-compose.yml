@@ -19,6 +19,11 @@ services:
     volumes:
       # Mount your projects directory so data persists across restarts.
       - ./projects:/app/projects
+      # Persist the pnpm content-addressable store across container restarts.
+      # Without this, node_modules symlinks inside the projects volume become
+      # broken after a restart because the store (ephemeral container layer)
+      # is wiped while the symlinks survive in the mounted projects volume.
+      - pnpm_store:/root/.local/share/pnpm/store
       # Mount opencode config so you can edit models without rebuilding.
       - ./opencode.jsonc:/app/opencode.jsonc:ro
       - ./budget.json:/app/budget.json
@@ -34,3 +39,8 @@ services:
     stdin_open: true    # needed for interactive --pipeline mode
     tty: true           # needed for interactive --pipeline mode
     restart: unless-stopped
+
+volumes:
+  # Persistent pnpm content-addressable store — survives container restarts.
+  # Prevents broken node_modules symlinks in the projects volume after a restart.
+  pnpm_store:

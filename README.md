@@ -188,6 +188,7 @@ agentik/
 ├── agentik.py               # entry point
 ├── Dockerfile               # full-stack Docker image
 ├── docker-compose.yml       # recommended way to run
+├── docker-compose.dev.yml   # dev mode overlay (hot-reload)
 ├── .env.example             # template for API keys
 ├── runner/                  # pipeline engine
 │   ├── config.py            #   constants, Rich console, prompt loader
@@ -207,7 +208,8 @@ agentik/
 │   └── frontend/            #   React + Tailwind + shadcn SPA
 ├── scripts/
 │   ├── start.sh             # quick-start script (Linux/macOS)
-│   └── start.ps1            # quick-start script (Windows)
+│   ├── start.ps1            # quick-start script (Windows)
+│   └── dev-entrypoint.sh    # Docker dev mode entrypoint
 ├── helpers/
 │   └── check_roadmap.py     # ROADMAP structural validator
 ├── tests/                   # unit tests
@@ -507,6 +509,7 @@ cp .env.example .env   # add your LLM API keys
 |---------|-------------|
 | `docker compose up` | Build image + start web UI at `:8420` |
 | `docker compose up -d` | Detached mode |
+| `docker compose -f docker-compose.yml -f docker-compose.dev.yml up` | Dev mode with hot-reload |
 | `docker compose run --rm agentik --pipeline` | Interactive pipeline |
 | `docker compose down` | Stop and remove containers |
 
@@ -517,6 +520,7 @@ The scripts in `scripts/` wrap docker compose for convenience:
 | Flag | Description |
 |------|-------------|
 | *(none)* or `--web` | Build + start web UI |
+| `--dev` | Dev mode — hot-reload frontend (HMR) + backend |
 | `--pipeline` | Interactive pipeline mode |
 | `--build-only` | Build the Docker image only |
 | `--detach` / `-d` | Start web UI in background |
@@ -548,6 +552,29 @@ The compose file mounts:
 docker build -t agentik .
 docker run -it --rm -v ./projects:/app/projects -p 8420:8420 agentik
 ```
+
+### Dev mode (hot-reload)
+
+Dev mode mounts your source code into the container and runs Vite (HMR) +
+uvicorn (`--reload`) so both frontend and backend changes are reflected
+instantly without rebuilding the image:
+
+```bash
+./scripts/start.sh --dev      # Linux/macOS
+.\scripts\start.ps1 --dev     # Windows
+
+# Or directly:
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+| URL | What |
+|-----|------|
+| `http://localhost:5173` | Frontend with HMR (use this during development) |
+| `http://localhost:8420` | Backend API (proxied automatically from :5173) |
+
+The Vite dev server proxies `/api` and `/ws` requests to the FastAPI backend.
+Edit files in `web/frontend/src/` for instant browser updates, or `web/app.py`,
+`runner/`, `helpers/` for backend changes that auto-restart uvicorn.
 
 ## Contributing
 

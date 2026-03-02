@@ -19,6 +19,11 @@ export default defineConfig({
         ws: true,
       },
     },
+    // Polling for Docker bind-mounted volumes (inotify unreliable).
+    watch: {
+      usePolling: true,
+      interval: 500,
+    },
   },
   build: {
     outDir: '../static',

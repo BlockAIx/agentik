@@ -581,6 +581,11 @@ python agentik.py --pipeline   # interactive pipeline
 .\scripts\start.ps1            # Windows
 docker compose up              # web UI at http://localhost:8420
 docker compose run agentik --pipeline   # interactive pipeline
+
+# Docker dev mode (hot-reload — no image rebuild needed)
+./scripts/start.sh --dev       # Linux/macOS
+.\scripts\start.ps1 --dev      # Windows
+# Frontend HMR: http://localhost:5173  |  Backend API: http://localhost:8420
 ```
 
 The opencode binary path is configurable via `OPENCODE_CMD` env var (default:

@@ -18,6 +18,7 @@ projects/
 
 # Frontend dev artifacts (rebuilt in Docker)
 web/frontend/node_modules
+web/frontend/dist
 web/static
 
 # IDE / editor

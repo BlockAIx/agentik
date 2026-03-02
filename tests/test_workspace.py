@@ -811,3 +811,244 @@ class TestGenerateProjectAgentsMd:
         # AGENTS.md always regenerated to stay in sync with ROADMAP.
         ws.ensure_workspace_dirs(project)
         assert calls == [project]
+
+
+# -- _has_broken_pnpm_store / _is_broken_symlink / _nuke_node_modules --------
+
+# Symlink creation may fail on Windows without developer mode or admin
+# privileges.  Skip symlink-dependent tests gracefully.
+_symlink_supported = True
+try:
+    import tempfile as _tf
+
+    with _tf.TemporaryDirectory() as _td:
+        _target = Path(_td) / "target"
+        _target.mkdir()
+        _link = Path(_td) / "link"
+        _link.symlink_to(_target)
+except OSError:
+    _symlink_supported = False
+
+_needs_symlinks = pytest.mark.skipif(
+    not _symlink_supported, reason="OS does not support unprivileged symlinks"
+)
+
+
+class TestIsBrokenSymlink:
+    @_needs_symlinks
+    def test_healthy_symlink(self, tmp_path: Path) -> None:
+        from runner.workspace import _is_broken_symlink
+
+        target = tmp_path / "real"
+        target.mkdir()
+        link = tmp_path / "link"
+        link.symlink_to(target)
+        assert _is_broken_symlink(link) is False
+
+    @_needs_symlinks
+    def test_broken_symlink(self, tmp_path: Path) -> None:
+        from runner.workspace import _is_broken_symlink
+
+        target = tmp_path / "gone"
+        target.mkdir()
+        link = tmp_path / "link"
+        link.symlink_to(target)
+        target.rmdir()  # break the link
+        assert _is_broken_symlink(link) is True
+
+    def test_regular_file(self, tmp_path: Path) -> None:
+        from runner.workspace import _is_broken_symlink
+
+        f = tmp_path / "file.txt"
+        f.write_text("hi")
+        assert _is_broken_symlink(f) is False
+
+
+class TestHasBrokenPnpmStore:
+    def test_no_node_modules(self, tmp_path: Path) -> None:
+        """No node_modules at all → not broken."""
+        from runner.workspace import _has_broken_pnpm_store
+
+        project = tmp_path / "proj"
+        project.mkdir()
+        assert _has_broken_pnpm_store(project) is False
+
+    def test_empty_pnpm_dir(self, tmp_path: Path) -> None:
+        """Empty .pnpm directory → broken."""
+        from runner.workspace import _has_broken_pnpm_store
+
+        project = tmp_path / "proj"
+        nm = project / "node_modules" / ".pnpm"
+        nm.mkdir(parents=True)
+        assert _has_broken_pnpm_store(project) is True
+
+    @_needs_symlinks
+    def test_healthy_modern_pnpm(self, tmp_path: Path) -> None:
+        """Modern pnpm layout with valid inner symlinks → not broken."""
+        from runner.workspace import _has_broken_pnpm_store
+
+        project = tmp_path / "proj"
+        nm = project / "node_modules"
+        pnpm = nm / ".pnpm"
+        # Simulate express@4.18.2/node_modules/express → real content
+        real_content = pnpm / "express@4.18.2" / "node_modules" / "express_real"
+        real_content.mkdir(parents=True)
+        inner_link = pnpm / "express@4.18.2" / "node_modules" / "express"
+        inner_link.symlink_to(real_content)
+        # Top-level symlink: node_modules/express → .pnpm/.../express
+        top_link = nm / "express"
+        top_link.symlink_to(inner_link)
+        assert _has_broken_pnpm_store(project) is False
+
+    @_needs_symlinks
+    def test_broken_inner_symlink_modern_pnpm(self, tmp_path: Path) -> None:
+        """Modern pnpm: inner symlink target gone → broken."""
+        from runner.workspace import _has_broken_pnpm_store
+
+        project = tmp_path / "proj"
+        nm = project / "node_modules"
+        pnpm = nm / ".pnpm"
+        # Create then break the inner symlink
+        real_content = pnpm / "lodash@4.17.21" / "node_modules" / "lodash_real"
+        real_content.mkdir(parents=True)
+        inner_link = pnpm / "lodash@4.17.21" / "node_modules" / "lodash"
+        inner_link.symlink_to(real_content)
+        import shutil
+
+        shutil.rmtree(real_content)  # break it
+        assert _has_broken_pnpm_store(project) is True
+
+    @_needs_symlinks
+    def test_broken_top_level_symlink(self, tmp_path: Path) -> None:
+        """Top-level node_modules symlink target gone → broken."""
+        from runner.workspace import _has_broken_pnpm_store
+
+        project = tmp_path / "proj"
+        nm = project / "node_modules"
+        pnpm = nm / ".pnpm"
+        # Valid inner structure but broken top-level link
+        real_content = pnpm / "pkg@1.0.0" / "node_modules" / "pkg_real"
+        real_content.mkdir(parents=True)
+        inner_link = pnpm / "pkg@1.0.0" / "node_modules" / "pkg"
+        inner_link.symlink_to(real_content)
+        # Top-level link points to something that doesn't exist
+        gone = tmp_path / "gone_target"
+        gone.mkdir()
+        top_link = nm / "pkg"
+        top_link.symlink_to(gone)
+        import shutil
+
+        shutil.rmtree(gone)
+        assert _has_broken_pnpm_store(project) is True
+
+    @_needs_symlinks
+    def test_workspace_package_broken(self, tmp_path: Path) -> None:
+        """Workspace package node_modules with broken symlinks → broken."""
+        from runner.workspace import _has_broken_pnpm_store
+
+        project = tmp_path / "proj"
+        # Root .pnpm is healthy
+        pnpm = project / "node_modules" / ".pnpm"
+        real = pnpm / "a@1.0.0" / "node_modules" / "a_real"
+        real.mkdir(parents=True)
+        link = pnpm / "a@1.0.0" / "node_modules" / "a"
+        link.symlink_to(real)
+        # Workspace package has broken link
+        pkg_nm = project / "packages" / "backend" / "node_modules"
+        pkg_nm.mkdir(parents=True)
+        gone = tmp_path / "gone2"
+        gone.mkdir()
+        pkg_link = pkg_nm / "express"
+        pkg_link.symlink_to(gone)
+        import shutil
+
+        shutil.rmtree(gone)
+        assert _has_broken_pnpm_store(project) is True
+
+    @_needs_symlinks
+    def test_pnpm_dir_with_only_metadata_no_packages(self, tmp_path: Path) -> None:
+        """.pnpm has only lock.yaml (no package dirs) → broken."""
+        from runner.workspace import _has_broken_pnpm_store
+
+        project = tmp_path / "proj"
+        pnpm = project / "node_modules" / ".pnpm"
+        pnpm.mkdir(parents=True)
+        (pnpm / "lock.yaml").write_text("lockfileVersion: 5.4")
+        assert _has_broken_pnpm_store(project) is True
+
+
+class TestNukeNodeModules:
+    def test_removes_all_node_modules(self, tmp_path: Path) -> None:
+        from runner.workspace import _nuke_node_modules
+
+        project = tmp_path / "proj"
+        (project / "node_modules" / "a").mkdir(parents=True)
+        (project / "packages" / "b" / "node_modules" / "c").mkdir(parents=True)
+        _nuke_node_modules(project)
+        assert not (project / "node_modules").exists()
+        assert not (project / "packages" / "b" / "node_modules").exists()
+
+
+class TestInstallDependenciesForceFlag:
+    """Verify that install_project_dependencies uses --force after broken store."""
+
+    def test_pnpm_force_on_broken_store(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import runner.workspace as ws
+
+        project = tmp_path / "proj"
+        project.mkdir()
+        (project / "package.json").write_text('{"name":"t"}', encoding="utf-8")
+
+        # Track all subprocess.run calls
+        calls: list[str] = []
+        orig_run = ws.subprocess.run
+
+        class _FakeResult:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        def _spy_run(cmd: str, **kwargs: object) -> _FakeResult:
+            calls.append(cmd)
+            return _FakeResult()
+
+        monkeypatch.setattr(ws.subprocess, "run", _spy_run)
+        # Pretend store is broken
+        monkeypatch.setattr(ws, "_has_broken_pnpm_store", lambda _p: True)
+        (project / "node_modules").mkdir()
+
+        ws.install_project_dependencies(project)
+
+        pnpm_calls = [c for c in calls if "pnpm" in c]
+        assert len(pnpm_calls) == 1
+        assert "--force" in pnpm_calls[0]
+
+    def test_pnpm_normal_when_store_ok(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import runner.workspace as ws
+
+        project = tmp_path / "proj"
+        project.mkdir()
+        (project / "package.json").write_text('{"name":"t"}', encoding="utf-8")
+
+        calls: list[str] = []
+
+        class _FakeResult:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        def _spy_run(cmd: str, **kwargs: object) -> _FakeResult:
+            calls.append(cmd)
+            return _FakeResult()
+
+        monkeypatch.setattr(ws.subprocess, "run", _spy_run)
+        # No node_modules → no broken store check triggers
+        ws.install_project_dependencies(project)
+
+        pnpm_calls = [c for c in calls if "pnpm" in c]
+        assert len(pnpm_calls) == 1
+        assert "--force" not in pnpm_calls[0]

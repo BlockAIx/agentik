@@ -22,11 +22,21 @@ export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null }
 
   static getDerivedStateFromError(error: Error): State {
-    // Stale build chunk — reload once to pick up the new index.html.
-    if (isChunkLoadError(error)) {
-      window.location.reload()
-    }
     return { error }
+  }
+
+  componentDidCatch(error: Error): void {
+    // Stale build chunk — reload once to pick up the new index.html.
+    // Side-effects belong in componentDidCatch, not getDerivedStateFromError.
+    if (isChunkLoadError(error)) {
+      const key = "chunk-reload"
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1")
+        window.location.reload()
+      } else {
+        sessionStorage.removeItem(key)
+      }
+    }
   }
 
   render(): React.ReactNode {

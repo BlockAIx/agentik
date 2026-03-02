@@ -872,6 +872,20 @@ _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _ASSETS_DIR = _STATIC_DIR / "assets"
 
 
+def _compute_build_etag() -> str:
+    """Return a short hash of index.html for ETag validation (computed once at import)."""
+    import hashlib  # noqa: PLC0415
+
+    index = _STATIC_DIR / "index.html"
+    if index.is_file():
+        digest = hashlib.sha256(index.read_bytes()).hexdigest()[:12]
+        return f'W/"{digest}"'
+    return ""
+
+
+_BUILD_ETAG: str = _compute_build_etag()
+
+
 def _read_index() -> str:
     """Return the React index.html content."""
     index = _STATIC_DIR / "index.html"
@@ -903,9 +917,7 @@ _MIME_MAP: dict[str, str] = {
 }
 
 
-# index.html must never be cached: chunk filenames change on each build and
-# a stale index.html pointing to old hashes causes "Failed to fetch dynamically
-# imported module" on first navigation after a redeploy.
+# index.html must never be cached — chunk filenames change on each build.
 _NO_CACHE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate",
     "Pragma": "no-cache",
@@ -913,10 +925,24 @@ _NO_CACHE_HEADERS = {
 }
 
 
+def _index_response() -> HTMLResponse:
+    """Build an HTMLResponse for index.html with no-cache + ETag headers."""
+    headers = dict(_NO_CACHE_HEADERS)
+    if _BUILD_ETAG:
+        headers["ETag"] = _BUILD_ETAG
+    return HTMLResponse(_read_index(), headers=headers)
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard() -> HTMLResponse:
     """Serve the React SPA index.html."""
-    return HTMLResponse(_read_index(), headers=_NO_CACHE_HEADERS)
+    return _index_response()
+
+
+# Hashed assets are content-addressed — cache immutably.
+_ASSET_CACHE_HEADERS = {
+    "Cache-Control": "public, max-age=31536000, immutable",
+}
 
 
 @app.get("/assets/{path:path}")
@@ -928,7 +954,11 @@ def serve_asset(path: str) -> Response:
     ):
         raise HTTPException(status_code=404, detail="Asset not found")
     media_type = _MIME_MAP.get(file_path.suffix.lower(), "application/octet-stream")
-    return Response(content=file_path.read_bytes(), media_type=media_type)
+    return Response(
+        content=file_path.read_bytes(),
+        media_type=media_type,
+        headers=_ASSET_CACHE_HEADERS,
+    )
 
 
 # SPA fallback: return index.html for any unmatched GET request (client-side
@@ -940,17 +970,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa
 async def _spa_or_error(request: Request, exc: StarletteHTTPException):  # type: ignore[override]
     """Return index.html for 404 GETs (SPA routing), otherwise raise.
 
-    Asset paths (/assets/…) are intentionally excluded: returning index.html for
-    a missing JS/CSS chunk causes the browser to try to parse HTML as a module,
-    which produces "Failed to fetch dynamically imported module".  Those paths
-    must return a real 404 so the browser surfaces a meaningful error.
+    Asset paths are excluded — returning HTML for a missing chunk would break
+    module parsing.
     """
     if (
         exc.status_code == 404
         and request.method == "GET"
         and not request.url.path.startswith("/assets/")
     ):
-        return HTMLResponse(_read_index(), headers=_NO_CACHE_HEADERS)
+        return _index_response()
     return HTMLResponse(content=str(exc.detail), status_code=exc.status_code)
 
 

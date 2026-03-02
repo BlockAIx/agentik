@@ -5,13 +5,38 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React, { Suspense, useEffect } from "react"
 import { Route, Routes } from "react-router-dom"
 
-const Dashboard = React.lazy(() =>
+/** Wrap React.lazy to auto-reload once when a chunk fails (stale build). */
+function lazyRetry<T extends React.ComponentType<unknown>>(
+  factory: () => Promise<{ default: T }>,
+): React.LazyExoticComponent<T> {
+  return React.lazy(() =>
+    factory()
+      .then((mod) => {
+        sessionStorage.removeItem("chunk-retry")
+        return mod
+      })
+      .catch((err: unknown) => {
+        const key = "chunk-retry"
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, "1")
+          const url = new URL(window.location.href)
+          url.searchParams.set("_cb", Date.now().toString())
+          window.location.replace(url.toString())
+          return new Promise<{ default: T }>(() => {})
+        }
+        sessionStorage.removeItem(key)
+        throw err
+      }),
+  )
+}
+
+const Dashboard = lazyRetry(() =>
   import("@/components/dashboard").then((m) => ({ default: m.Dashboard })),
 )
-const ProjectView = React.lazy(() =>
+const ProjectView = lazyRetry(() =>
   import("@/components/project-view").then((m) => ({ default: m.ProjectView })),
 )
-const SettingsPage = React.lazy(() =>
+const SettingsPage = lazyRetry(() =>
   import("@/components/settings-page").then((m) => ({ default: m.SettingsPage })),
 )
 
