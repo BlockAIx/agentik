@@ -32,7 +32,7 @@ export function Controls({
   invalidModels?: Array<{ agent: string; model: string }>
 }): React.JSX.Element {
   const [logs, setLogs] = useState<string[]>([])
-  const [verbose, setVerbose] = useState(false)
+  const [verbose, setVerbose] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const logContainerRef = useRef<HTMLDivElement>(null)
 
