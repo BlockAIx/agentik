@@ -811,7 +811,9 @@ async def update_budget_config(request: Request) -> dict:
     """
     body = await request.json()
     try:
-        _BUDGET_CONFIG_PATH.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+        _BUDGET_CONFIG_PATH.write_text(
+            json.dumps(body, indent=2) + "\n", encoding="utf-8"
+        )
     except OSError as exc:
         raise HTTPException(500, f"Failed to write budget.json: {exc}") from exc
     return {"saved": True}
@@ -901,10 +903,20 @@ _MIME_MAP: dict[str, str] = {
 }
 
 
+# index.html must never be cached: chunk filenames change on each build and
+# a stale index.html pointing to old hashes causes "Failed to fetch dynamically
+# imported module" on first navigation after a redeploy.
+_NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard() -> HTMLResponse:
     """Serve the React SPA index.html."""
-    return HTMLResponse(_read_index())
+    return HTMLResponse(_read_index(), headers=_NO_CACHE_HEADERS)
 
 
 @app.get("/assets/{path:path}")
@@ -928,7 +940,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa
 async def _spa_or_error(request: Request, exc: StarletteHTTPException):  # type: ignore[override]
     """Return index.html for 404 GETs (SPA routing), otherwise raise."""
     if exc.status_code == 404 and request.method == "GET":
-        return HTMLResponse(_read_index())
+        return HTMLResponse(_read_index(), headers=_NO_CACHE_HEADERS)
     return HTMLResponse(content=str(exc.detail), status_code=exc.status_code)
 
 

@@ -1,14 +1,14 @@
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import type { ProjectDetail } from "@/lib/api"
-import { fmt, fmtDate } from "@/lib/format"
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import type { ProjectDetail } from "@/lib/api";
+import { fmt, fmtDate } from "@/lib/format";
 
 function statusBadge(status: string) {
   switch (status) {
