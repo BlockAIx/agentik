@@ -19,6 +19,11 @@ All tasks through this checkpoint pass tests. Verify releasable state before tag
 
 {{TASK_SPEC}}
 
+## Pre-flight
+
+Before running any tests, ensure dependencies are fully installed.
+Run the appropriate installer for the ecosystem and confirm it exits cleanly.
+
 ## Checklist
 
 Read files as needed, report ✔/⚠/✗ per item:

@@ -938,8 +938,18 @@ from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa
 
 @app.exception_handler(StarletteHTTPException)
 async def _spa_or_error(request: Request, exc: StarletteHTTPException):  # type: ignore[override]
-    """Return index.html for 404 GETs (SPA routing), otherwise raise."""
-    if exc.status_code == 404 and request.method == "GET":
+    """Return index.html for 404 GETs (SPA routing), otherwise raise.
+
+    Asset paths (/assets/…) are intentionally excluded: returning index.html for
+    a missing JS/CSS chunk causes the browser to try to parse HTML as a module,
+    which produces "Failed to fetch dynamically imported module".  Those paths
+    must return a real 404 so the browser surfaces a meaningful error.
+    """
+    if (
+        exc.status_code == 404
+        and request.method == "GET"
+        and not request.url.path.startswith("/assets/")
+    ):
         return HTMLResponse(_read_index(), headers=_NO_CACHE_HEADERS)
     return HTMLResponse(content=str(exc.detail), status_code=exc.status_code)
 
