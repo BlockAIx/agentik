@@ -331,8 +331,11 @@ right agent for every other phase automatically. Models are in `opencode.jsonc`.
 for thinking, then follow with a `build` task.
 
 `milestone` invokes a review agent that can **read files and run inspection
-commands** (`git log`, `git diff`, `cat`, `grep`, etc.) but cannot edit files or
-run destructive commands. If the milestone verdict is **CONDITIONAL PASS** or
+commands** (`git log`, `git diff`, `cat`, `grep`, etc.) but **cannot edit
+files, run tests, or execute build/install commands** — all non-inspection
+commands are denied via a `"*": "deny"` catch-all in `opencode.jsonc`.
+The pipeline already guarantees all tests pass before a milestone runs.
+If the milestone verdict is **CONDITIONAL PASS** or
 **FAIL**, the runner automatically invokes the **fix agent** to address the
 reported issues (up to 2 attempts), re-runs tests to ensure nothing broke,
 then proceeds with static checks and tagging. When git is managed, the runner

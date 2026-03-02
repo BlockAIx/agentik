@@ -55,12 +55,7 @@
           "tail *": "allow",
           "wc *": "allow",
           "grep *": "allow",
-          "git push *": "deny",
-          "git merge *": "deny",
-          "git tag *": "deny",
-          "git checkout *": "deny",
-          "git branch *": "deny",
-          "rm *": "deny"
+          "*": "deny"
         }
       }
     }
