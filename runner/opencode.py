@@ -105,11 +105,23 @@ def _run_with_log(cmd: str, log_path: Path, *, echo: bool) -> int:
             errors="replace",
         )
         assert proc.stdout is not None
-        for line in proc.stdout:
-            log_fh.write(_strip_ansi(line))
-            log_fh.flush()
-            if echo:
-                print(line, end="", flush=True)
+        try:
+            for line in proc.stdout:
+                log_fh.write(_strip_ansi(line))
+                log_fh.flush()
+                if echo:
+                    print(line, end="", flush=True)
+        except KeyboardInterrupt:
+            # User hit Ctrl-C — kill the agent process before propagating.
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            raise
+        finally:
+            proc.stdout.close()
         proc.wait()
     return proc.returncode
 
@@ -148,7 +160,10 @@ _MODEL_ERROR_PATTERNS = [
     re.compile(r"invalid model", re.IGNORECASE),
     re.compile(r"no such model", re.IGNORECASE),
     re.compile(r"model .+ not supported", re.IGNORECASE),
-    re.compile(r"(?<![A-Za-z])Unauthorized(?![A-Za-z])|invalid.api.key|authentication.failed", re.IGNORECASE),
+    re.compile(
+        r"(?<![A-Za-z])Unauthorized(?![A-Za-z])|invalid.api.key|authentication.failed",
+        re.IGNORECASE,
+    ),
     re.compile(r"PROVIDER_NOT_CONFIGURED", re.IGNORECASE),
 ]
 

@@ -1052,3 +1052,69 @@ class TestInstallDependenciesForceFlag:
         pnpm_calls = [c for c in calls if "pnpm" in c]
         assert len(pnpm_calls) == 1
         assert "--force" not in pnpm_calls[0]
+
+
+class TestInstallDependenciesErrorSummary:
+    """Verify error summary uses stdout fallback when stderr is empty."""
+
+    def _run_failing_install(
+        self,
+        tmp_path: Path,
+        monkeypatch: "pytest.MonkeyPatch",
+        stdout: str,
+        stderr: str,
+    ) -> list[str]:
+        import io
+        from unittest.mock import patch
+
+        from rich.console import Console
+
+        import runner.workspace as ws
+
+        project = tmp_path / "proj"
+        project.mkdir()
+        (project / "package.json").write_text('{"name":"t"}', encoding="utf-8")
+
+        class _FailResult:
+            returncode = 1
+
+        _FailResult.stdout = stdout
+        _FailResult.stderr = stderr
+
+        monkeypatch.setattr(ws.subprocess, "run", lambda *a, **kw: _FailResult())
+
+        printed: list[str] = []
+        real_print = ws._console.print
+
+        def _capture(msg: str = "", *args: object, **kwargs: object) -> None:
+            printed.append(str(msg))
+
+        monkeypatch.setattr(ws._console, "print", _capture)
+        ws.install_project_dependencies(project)
+        return printed
+
+    def test_stderr_used_when_present(
+        self, tmp_path: Path, monkeypatch: "pytest.MonkeyPatch"
+    ) -> None:
+        output = self._run_failing_install(
+            tmp_path, monkeypatch, stdout="some stdout", stderr="actual error line"
+        )
+        warning = next(m for m in output if "dependency install failed" in m)
+        assert "actual error line" in warning
+
+    def test_stdout_fallback_when_stderr_empty(
+        self, tmp_path: Path, monkeypatch: "pytest.MonkeyPatch"
+    ) -> None:
+        output = self._run_failing_install(
+            tmp_path, monkeypatch, stdout="pnpm: command not found", stderr=""
+        )
+        warning = next(m for m in output if "dependency install failed" in m)
+        assert "pnpm: command not found" in warning
+        assert "unknown error" not in warning
+
+    def test_fallback_message_when_both_empty(
+        self, tmp_path: Path, monkeypatch: "pytest.MonkeyPatch"
+    ) -> None:
+        output = self._run_failing_install(tmp_path, monkeypatch, stdout="", stderr="")
+        warning = next(m for m in output if "dependency install failed" in m)
+        assert "unknown error" in warning

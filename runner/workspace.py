@@ -348,9 +348,16 @@ def install_project_dependencies(project_dir: Path) -> None:
             cmd, shell=True, capture_output=True, text=True, cwd=str(project_dir)
         )
         if result.returncode != 0:
-            # Show a concise error: extract the last non-blank error line.
+            # Show a concise error: extract the last non-blank line from stderr,
+            # falling back to stdout (pnpm and some other tools write errors there).
             err_lines = [ln.strip() for ln in result.stderr.splitlines() if ln.strip()]
-            err_summary = err_lines[-1] if err_lines else "unknown error"
+            if not err_lines:
+                err_lines = [
+                    ln.strip() for ln in result.stdout.splitlines() if ln.strip()
+                ]
+            err_summary = (
+                err_lines[-1] if err_lines else "unknown error (no output captured)"
+            )
             _console.print(
                 f"[yellow]⚠ dependency install failed ({manifest_name}):[/] {err_summary}"
             )
@@ -471,6 +478,7 @@ def ensure_project_git(project_dir: Path) -> None:
         gitignore.write_text(_PROJECT_GITIGNORE, encoding="utf-8")
 
     git_run("init", project_dir)
+    _ensure_git_identity(project_dir)
     git_run("add .", project_dir)
     git_run('commit -m "chore: initial project scaffold"', project_dir)
     git_run("branch -M main", project_dir)
@@ -501,6 +509,50 @@ def ensure_feature_branch(task: str, project_dir: Path) -> str | None:
     return branch
 
 
+def _git_run_checked(cmd: str, project_dir: Path, description: str) -> bool:
+    """Run a git command and print a warning if it fails.
+
+    Args:
+        cmd:         Git sub-command string.
+        project_dir: Project directory (passed as ``-C`` to git).
+        description: Human-readable name used in the warning message.
+
+    Returns:
+        True on success, False on failure.
+    """
+    result = subprocess.run(
+        f'git -C "{project_dir}" {cmd}',
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or result.stdout.strip()
+        _console.print(f"[yellow]⚠ git {description} failed:[/] {stderr}")
+    return result.returncode == 0
+
+
+def _ensure_git_identity(project_dir: Path) -> None:
+    """Set git user.name / user.email only when not already configured.
+
+    Reads the resolved value (local → global → system config) for each key.
+    Only writes a fallback value when git would otherwise refuse to commit due
+    to a missing identity — e.g. inside a fresh Docker container.
+    """
+    for key, fallback in (
+        ("user.name", "agentik"),
+        ("user.email", "agentik@runner.local"),
+    ):
+        result = subprocess.run(
+            f'git -C "{project_dir}" config {key}',
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            git_run(f'config {key} "{fallback}"', project_dir)
+
+
 def commit_and_merge(
     task: str, project_dir: Path, task_outputs: list[str] | None = None
 ) -> None:
@@ -514,6 +566,11 @@ def commit_and_merge(
         return
     branch = f"feature/{slugify(task)}"
     label = _clean_task_label(task)
+
+    # Ensure git identity is set for this repo (falls back to agentik defaults
+    # only when no local/global identity is configured, e.g. inside Docker).
+    _ensure_git_identity(project_dir)
+
     # Always include runner state so the completed-task record is part of the commit.
     if (project_dir / ".runner_state.json").exists():
         git_run('add ".runner_state.json"', project_dir)
@@ -522,9 +579,13 @@ def commit_and_merge(
             git_run(f'add "{out}"', project_dir)
     else:
         git_run("add .", project_dir)
-    git_run(f'commit -m "feat: {label}"', project_dir)
-    git_run("checkout develop", project_dir)
-    git_run(f"merge --no-ff {branch}", project_dir)
+    if not _git_run_checked(f'commit -m "feat: {label}"', project_dir, "commit"):
+        _console.print(
+            "[yellow]⚠ Nothing to commit or commit failed — skipping merge.[/]"
+        )
+        return
+    _git_run_checked("checkout develop", project_dir, "checkout develop")
+    _git_run_checked(f"merge --no-ff {branch}", project_dir, f"merge {branch}")
     git_run(f"branch -d {branch}", project_dir)
     _git_push_if_remote("develop", project_dir)
     _console.print(

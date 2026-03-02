@@ -4,7 +4,9 @@ import asyncio
 import io
 import json
 import os
+import platform
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -443,6 +445,7 @@ async def run_pipeline(name: str, request: Request) -> dict:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 env=env,
+                start_new_session=True,
             ) as proc:
                 _pipeline_process = proc
                 assert proc.stdout is not None
@@ -476,12 +479,23 @@ async def run_pipeline(name: str, request: Request) -> dict:
 
 @app.post("/api/projects/{name}/stop")
 def stop_pipeline(name: str) -> dict:
-    """Terminate the running pipeline subprocess if one is active."""
+    """Terminate the running pipeline subprocess and all its children."""
     global _pipeline_running, _pipeline_project, _pipeline_process
     _pipeline_running = False
     _pipeline_project = None
     if _pipeline_process is not None:
-        _pipeline_process.terminate()
+        proc = _pipeline_process
+        try:
+            if platform.system() != "Windows":
+                # Kill the entire process group so opencode grandchildren die too.
+                pgid = os.getpgid(proc.pid)  # type: ignore[attr-defined]
+                os.killpg(pgid, signal.SIGTERM)  # type: ignore[attr-defined]
+            else:
+                proc.terminate()
+        except ProcessLookupError:
+            pass  # Already gone.
+        except Exception:  # noqa: BLE001
+            proc.terminate()  # Fallback.
     return {"stopped": True}
 
 

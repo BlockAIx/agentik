@@ -72,7 +72,7 @@ def run_attempt(
     """
     phase_label = "Build" if fix_logs is None else "Fix"
     _console.print(
-        f"\n[bold][1/5] {phase_label}[/]  [dim](attempt {attempt + 1}/{MAX_ATTEMPTS})[/]"
+        f"\n[bold][1/4] {phase_label}[/]  [dim](attempt {attempt + 1}/{MAX_ATTEMPTS})[/]"
     )
 
     # On the first attempt, scaffold any ecosystem config files this task needs.
@@ -91,7 +91,7 @@ def run_attempt(
     task_eco = get_task_ecosystem(task, project_dir)
     scaffold_ecosystem_configs(project_dir, task_eco)
 
-    _console.print("\n[bold][2/6] Test[/]")
+    _console.print("\n[bold][2/4] Test[/]")
     passed, output = run_tests(project_dir)
 
     # Coverage gating: if tests pass, check coverage threshold.
@@ -351,7 +351,7 @@ def process_milestone(task: str, project_dir: Path) -> None:
             install_project_dependencies(project_dir)
 
             # Re-run tests to make sure fixes didn't break anything.
-            _console.print(f"\n[bold][3/4] Re-test[/]  [dim](after milestone fix)[/]")
+            _console.print("\n[bold][3/4] Re-test[/]  [dim](after milestone fix)[/]")
             passed, output = run_tests(project_dir)
             if passed:
                 _console.print("[green]Tests still passing after milestone fix.[/]")
@@ -602,6 +602,12 @@ def run_pipeline_headless(project_dir: Path, verbose: bool = False) -> None:
             batch = buildable[:MAX_PARALLEL_AGENTS]
             process_parallel_batch(batch, project_dir)
 
+    except KeyboardInterrupt:
+        _console.print(
+            "\n[yellow bold]Pipeline paused.[/] "
+            "[dim]State saved — re-run to resume from the current task.[/]"
+        )
+        return
     except ModelConfigError:
         _console.print(
             "\n[red bold]╔══════════════════════════════════════════════════════╗[/]"
@@ -742,53 +748,61 @@ def main() -> None:
 
     # Handle resume — process the interrupted task sequentially, then continue
     # with graph-based scheduling.
-    saved = load_runner_state(project_dir)
-    if saved and saved["current_task"]:
-        resume_task = saved["current_task"]
-        if not task_done(resume_task, project_dir):
-            _console.print(
-                f"[yellow]▶ Resuming[/] '{resume_task}' from attempt {saved['attempt'] + 1}"
-            )
-            process_task(
-                resume_task,
-                project_dir,
-                resume_attempt=saved["attempt"],
-                resume_fix_logs=saved.get("fix_logs"),
-            )
+    try:
+        saved = load_runner_state(project_dir)
+        if saved and saved["current_task"]:
+            resume_task = saved["current_task"]
+            if not task_done(resume_task, project_dir):
+                _console.print(
+                    f"[yellow]▶ Resuming[/] '{resume_task}' from attempt {saved['attempt'] + 1}"
+                )
+                process_task(
+                    resume_task,
+                    project_dir,
+                    resume_attempt=saved["attempt"],
+                    resume_fix_logs=saved.get("fix_logs"),
+                )
 
-    # ── Graph-based scheduling loop ────────────────────────────────────────
-    while True:
-        done_set = {t for t in all_tasks if task_done(t, project_dir)}
-        ready = get_ready_tasks(all_tasks, graph, done_set, project_dir)
+        # ── Graph-based scheduling loop ────────────────────────────────────────
+        while True:
+            done_set = {t for t in all_tasks if task_done(t, project_dir)}
+            ready = get_ready_tasks(all_tasks, graph, done_set, project_dir)
 
-        if not ready:
-            break
+            if not ready:
+                break
 
-        # Milestone tasks are barriers — process alone, never in parallel.
-        if is_milestone_task(ready[0], project_dir):
-            process_milestone(ready[0], project_dir)
-            continue
+            # Milestone tasks are barriers — process alone, never in parallel.
+            if is_milestone_task(ready[0], project_dir):
+                process_milestone(ready[0], project_dir)
+                continue
 
-        # The first task (project setup) always runs alone.
-        if first_task and first_task in ready:
-            process_task(first_task, project_dir)
-            continue
+            # The first task (project setup) always runs alone.
+            if first_task and first_task in ready:
+                process_task(first_task, project_dir)
+                continue
 
-        # Filter out any milestone tasks from parallel batches (they wait).
-        buildable = [t for t in ready if not is_milestone_task(t, project_dir)]
-        if not buildable:
-            # Only milestones left but their deps aren't met yet — should not
-            # happen with a valid graph, but guard against it.
-            break
+            # Filter out any milestone tasks from parallel batches (they wait).
+            buildable = [t for t in ready if not is_milestone_task(t, project_dir)]
+            if not buildable:
+                # Only milestones left but their deps aren't met yet — should not
+                # happen with a valid graph, but guard against it.
+                break
 
-        # Single task or parallelism disabled → sequential.
-        if len(buildable) == 1 or MAX_PARALLEL_AGENTS <= 1:
-            process_task(buildable[0], project_dir)
-            continue
+            # Single task or parallelism disabled → sequential.
+            if len(buildable) == 1 or MAX_PARALLEL_AGENTS <= 1:
+                process_task(buildable[0], project_dir)
+                continue
 
-        # Multiple independent tasks → parallel build.
-        batch = buildable[:MAX_PARALLEL_AGENTS]
-        process_parallel_batch(batch, project_dir)
+            # Multiple independent tasks → parallel build.
+            batch = buildable[:MAX_PARALLEL_AGENTS]
+            process_parallel_batch(batch, project_dir)
+
+    except KeyboardInterrupt:
+        _console.print(
+            "\n[yellow bold]Pipeline paused.[/] "
+            "[dim]State saved — re-run to resume from the current task.[/]"
+        )
+        return
 
     # ── Pipeline complete ──────────────────────────────────────────────────
     done_set = {t for t in all_tasks if task_done(t, project_dir)}
