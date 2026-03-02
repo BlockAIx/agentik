@@ -148,7 +148,7 @@ _MODEL_ERROR_PATTERNS = [
     re.compile(r"invalid model", re.IGNORECASE),
     re.compile(r"no such model", re.IGNORECASE),
     re.compile(r"model .+ not supported", re.IGNORECASE),
-    re.compile(r"Unauthorized|invalid.api.key|authentication.failed", re.IGNORECASE),
+    re.compile(r"(?<![A-Za-z])Unauthorized(?![A-Za-z])|invalid.api.key|authentication.failed", re.IGNORECASE),
     re.compile(r"PROVIDER_NOT_CONFIGURED", re.IGNORECASE),
 ]
 

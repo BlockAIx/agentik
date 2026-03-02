@@ -9,12 +9,12 @@
 #
 set -euo pipefail
 
-# Install frontend deps if node_modules is missing (first run after mount).
-if [ ! -d /app/web/frontend/node_modules ]; then
+# Install frontend deps if vite is missing.
+# Check for the binary rather than the directory: the anonymous volume at
+# node_modules/ is created empty on first run, so the directory always exists.
+if [ ! -f /app/web/frontend/node_modules/.bin/vite ]; then
     echo "▸ Installing frontend dependencies..."
     cd /app/web/frontend
-    corepack enable
-    corepack prepare pnpm@latest --activate
     pnpm install
     cd /app
 fi

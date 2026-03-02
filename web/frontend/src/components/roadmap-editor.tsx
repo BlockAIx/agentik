@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRoadmap, useUpdateRoadmap, useValidateRoadmap } from "@/hooks/use-queries"
 import Editor, { type BeforeMount } from "@monaco-editor/react"
 import {
-  AlertTriangle,
-  CheckCircle2,
-  FileCode2,
-  Loader2,
-  Save,
-  ShieldCheck,
+    AlertTriangle,
+    CheckCircle2,
+    FileCode2,
+    Loader2,
+    Save,
+    ShieldCheck,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -155,7 +155,7 @@ export function RoadmapEditor({
             <Editor
               defaultLanguage="json"
               value={content}
-              onChange={(v) => setLocalContent(v ?? "")}
+              onChange={(v: string | undefined) => setLocalContent(v ?? "")}
               beforeMount={handleBeforeMount}
               theme="vs-dark"
               options={{

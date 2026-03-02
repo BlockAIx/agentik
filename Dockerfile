@@ -57,12 +57,14 @@ RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
     && corepack enable \
     && corepack prepare pnpm@latest --activate
 
-# Point pnpm content store to a named-volume mount point so it persists across
-# rebuilds and stays off bind-mounted project directories (huge speedup on
-# Windows/macOS Docker where bind-mount I/O is slow).
+# Point pnpm content store and virtual store to named-volume mount points so
+# they persist across rebuilds and stay off bind-mounted project directories
+# (huge speedup on Windows/macOS Docker where bind-mount I/O is slow and
+# rename operations fail with EACCES).
 ENV PNPM_STORE_DIR=/pnpm-store
 RUN mkdir -p /pnpm-store /pnpm-vstore \
-    && pnpm config set store-dir /pnpm-store
+    && pnpm config set store-dir /pnpm-store \
+    && pnpm config set virtual-store-dir /pnpm-vstore
 
 # ── Workspace setup ───────────────────────────────────────────────────────────
 WORKDIR /app

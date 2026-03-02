@@ -324,106 +324,11 @@ def _pnpm_vstore_args(project_dir: Path) -> str:
     return f" --virtual-store-dir={vstore}"
 
 
-def _is_broken_symlink(path: Path) -> bool:
-    """Return True if *path* is a symlink whose ultimate target does not exist."""
-    try:
-        return path.is_symlink() and not path.resolve().exists()
-    except OSError:
-        # Permission errors, circular symlinks, etc. — treat as broken.
-        return True
-
-
-def _has_broken_pnpm_store(project_dir: Path) -> bool:
-    """Detect a broken pnpm virtual store (dangling symlinks after store wipe).
-
-    Samples symlinks inside ``.pnpm/<pkg>@<ver>/node_modules/``, top-level
-    ``node_modules`` entries, and workspace package dirs.  Returns True if
-    any target is missing.
-    """
-    for nm_dir in project_dir.rglob("node_modules"):
-        if not nm_dir.is_dir():
-            continue
-        pnpm_dir = nm_dir / ".pnpm"
-        if pnpm_dir.is_dir():
-            sampled = 0
-            for pkg_version_dir in pnpm_dir.iterdir():
-                if not pkg_version_dir.is_dir():
-                    continue
-                inner_nm = pkg_version_dir / "node_modules"
-                if not inner_nm.is_dir():
-                    continue
-                for inner_entry in inner_nm.iterdir():
-                    if _is_broken_symlink(inner_entry):
-                        return True
-                    break
-                sampled += 1
-                if sampled >= 3:
-                    break
-            else:
-                if sampled == 0:
-                    return True
-            checked_top = 0
-            for entry in nm_dir.iterdir():
-                if entry.name.startswith("."):
-                    continue
-                if _is_broken_symlink(entry):
-                    return True
-                if entry.is_symlink() and entry.is_dir():
-                    try:
-                        sub = next(entry.iterdir(), None)
-                        if sub is not None and _is_broken_symlink(sub):
-                            return True
-                    except OSError:
-                        return True
-                checked_top += 1
-                if checked_top >= 5:
-                    break
-            continue
-        # Workspace package — no local .pnpm, symlinks point to root store.
-        checked = 0
-        for entry in nm_dir.iterdir():
-            if entry.name.startswith("."):
-                continue
-            if _is_broken_symlink(entry):
-                return True
-            if entry.is_symlink() and entry.is_dir():
-                try:
-                    sub = next(entry.iterdir(), None)
-                    if sub is not None and _is_broken_symlink(sub):
-                        return True
-                except OSError:
-                    return True
-            checked += 1
-            if checked >= 5:
-                break
-    return False
-
-
-def _nuke_node_modules(project_dir: Path) -> None:
-    """Remove all node_modules directories in the project tree."""
-    import shutil  # noqa: PLC0415
-
-    for nm_dir in sorted(project_dir.rglob("node_modules"), reverse=True):
-        if nm_dir.is_dir():
-            shutil.rmtree(nm_dir, ignore_errors=True)
-
-
 def install_project_dependencies(project_dir: Path) -> None:
     """Install all dependencies declared by the project's manifest files."""
     python = Path(sys.executable).resolve().as_posix()
     proj_dir_posix = project_dir.resolve().as_posix()
     found_any = False
-    force_pnpm = False
-
-    # Detect broken pnpm store and force reinstall if needed.
-    _any_nm = any(p.is_dir() for p in project_dir.rglob("node_modules") if p.is_dir())
-    if _any_nm and _has_broken_pnpm_store(project_dir):
-        _console.print(
-            "[yellow]⚠ Broken pnpm store detected — purging node_modules "
-            "for clean reinstall.[/]"
-        )
-        _nuke_node_modules(project_dir)
-        force_pnpm = True
 
     for manifest_name, cmd_template, label in _DEP_INSTALLERS:
         manifest = project_dir / manifest_name
@@ -434,20 +339,11 @@ def install_project_dependencies(project_dir: Path) -> None:
         cmd = cmd_template.format(
             manifest=manifest_posix, dir=proj_dir_posix, python=python
         )
-        # After nuking a broken pnpm store, force a full re-download so pnpm
-        # does not skip re-linking because the lockfile looks satisfied.
-        if label == "pnpm" and force_pnpm:
-            cmd = "pnpm install --force" + _pnpm_vstore_args(project_dir)
-            _console.print(
-                "[dim][[deps]][/] package.json → [cyan]pnpm install --force[/] ..."
-            )
-        elif label == "pnpm":
+        if label == "pnpm":
             vstore = _pnpm_vstore_args(project_dir)
             if vstore:
                 cmd = cmd + vstore
-            _console.print(f"[dim][[deps]][/] {manifest_name} → [cyan]{label}[/] ...")
-        else:
-            _console.print(f"[dim][[deps]][/] {manifest_name} → [cyan]{label}[/] ...")
+        _console.print(f"[dim][[deps]][/] {manifest_name} → [cyan]{label}[/] ...")
         result = subprocess.run(
             cmd, shell=True, capture_output=True, text=True, cwd=str(project_dir)
         )
