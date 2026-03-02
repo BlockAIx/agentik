@@ -109,13 +109,7 @@ def get_task_body(task: str, project_dir: Path) -> str:
 
 
 def get_task_ecosystem(task: str, project_dir: Path) -> str:
-    """Return the ecosystem for a task (task-level override or project default)."""
-    roadmap = _load_roadmap(project_dir)
-    t = _find_task(roadmap, task)
-    if t:
-        eco = t.get("ecosystem", "")
-        if eco:
-            return eco
+    """Return the project-level ecosystem."""
     return _detect_ecosystem(project_dir)
 
 
@@ -268,9 +262,7 @@ def get_task_layers(
             # Fallback for cycles or disconnected graphs
             candidates = list(remaining)
 
-        milestones = [
-            t for t in candidates if is_milestone_task(t, project_dir)
-        ]
+        milestones = [t for t in candidates if is_milestone_task(t, project_dir)]
 
         if milestones:
             # Milestones fire as soon as their deps are met — one per layer.

@@ -1,8 +1,13 @@
 """plan.py — ROADMAP.json generation from natural language descriptions."""
 
+import datetime
 import json
+import os
+import re
 import subprocess
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 import questionary
@@ -14,6 +19,26 @@ from runner.config import (
     _console,
     render_prompt,
 )
+
+# Default timeout for architect agent (seconds).  Override with
+# ROADMAP_GEN_TIMEOUT env var.  10 minutes is generous enough for most
+# models while still providing a safety net.
+_ARCHITECT_TIMEOUT: int = int(os.environ.get("ROADMAP_GEN_TIMEOUT", "600"))
+
+# ANSI escape sequence pattern (matches CSI, OSC, and standalone ESC codes).
+_ANSI_RE = re.compile(
+    r"\x1b"
+    r"(?:"
+    r"\[[0-9;?]*[A-Za-z]"
+    r"|\][^\x07\x1b]*(?:\x07|\x1b\\)"
+    r"|[^\[\]]"
+    r")"
+)
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from *text*."""
+    return _ANSI_RE.sub("", text)
 
 
 def generate_roadmap_interactive(project_name: str | None = None) -> Path | None:
@@ -117,6 +142,11 @@ def generate_roadmap_interactive(project_name: str | None = None) -> Path | None
     else:
         _console.print("[green]✔ ROADMAP validation passed.[/]")
 
+    # Scaffold project dirs, budget, git, opencode config, and AGENTS.md.
+    from runner.workspace import ensure_workspace_dirs  # noqa: PLC0415
+
+    ensure_workspace_dirs(project_dir)
+
     _console.print(f"\n[green bold]✔ Saved:[/] {roadmap_path}")
     return roadmap_path
 
@@ -124,7 +154,12 @@ def generate_roadmap_interactive(project_name: str | None = None) -> Path | None
 def _call_architect(
     description: str, project_name: str, ecosystem: str = "python"
 ) -> str | None:
-    """Invoke the architect agent to generate ROADMAP JSON from a description."""
+    """Invoke the architect agent to generate ROADMAP JSON from a description.
+
+    Uses ``Popen`` with streaming output capture so the user sees a live
+    progress spinner, and partial output is preserved if the process times
+    out.  Retries once with a doubled timeout on the first timeout.
+    """
     prompt = render_prompt("generate", DESCRIPTION=description, ECOSYSTEM=ecosystem)
 
     with tempfile.NamedTemporaryFile(
@@ -133,43 +168,182 @@ def _call_architect(
         f.write(prompt)
         tmpfile = f.name
 
-    try:
-        # Use opencode in non-interactive mode.
-        tmpfile_posix = Path(tmpfile).resolve().as_posix()
-        cmd = (
-            f'{OPENCODE_CMD} run "Generate the ROADMAP.json as specified in the attached file. '
-            f'Output ONLY the JSON, no markdown fences." '
-            f'--agent architect -f "{tmpfile_posix}"'
-        )
+    timeout = _ARCHITECT_TIMEOUT
+    project_dir = PROJECTS_ROOT / project_name
 
-        result = subprocess.run(
+    for attempt in range(1, 3):  # max 2 attempts
+        result = _run_architect_once(tmpfile, timeout, project_dir, attempt)
+        if result is not None:
+            Path(tmpfile).unlink(missing_ok=True)
+            return result
+
+        # On first timeout, retry with a longer budget.
+        if attempt == 1 and _last_architect_timed_out:
+            _console.print(
+                f"[yellow]⟳ Retrying with extended timeout ({timeout * 2}s)...[/]"
+            )
+            timeout *= 2
+        else:
+            break
+
+    Path(tmpfile).unlink(missing_ok=True)
+    return None
+
+
+# Sentinel set by _run_architect_once so _call_architect knows whether to retry.
+_last_architect_timed_out: bool = False
+
+
+def _run_architect_once(
+    tmpfile: str, timeout: int, project_dir: Path | None = None, attempt: int = 1
+) -> str | None:
+    """Run the opencode architect subprocess once, streaming output and enforcing *timeout*.
+
+    Captured output is written (ANSI-stripped) to
+    ``<project_dir>/logs/roadmap-generate/<timestamp>_generate_a<attempt>.log``.
+
+    Returns extracted JSON on success, or ``None`` on failure.
+    Sets the module-level ``_last_architect_timed_out`` flag.
+    """
+    global _last_architect_timed_out  # noqa: PLW0603
+    _last_architect_timed_out = False
+
+    tmpfile_posix = Path(tmpfile).resolve().as_posix()
+    dir_flag = ""
+    if project_dir is not None and project_dir.exists():
+        dir_flag = f' --dir "{project_dir.resolve().as_posix()}"'
+    cmd = (
+        f'{OPENCODE_CMD} run "You must output ONLY a raw JSON object. '
+        f"Do NOT read files, do NOT use tools, do NOT plan or delegate. "
+        f"All information is in the attached file. "
+        f'Generate the complete ROADMAP.json directly in your response." '
+        f'--agent architect{dir_flag} -f "{tmpfile_posix}"'
+    )
+
+    collected: list[str] = []
+    proc: subprocess.Popen[str] | None = None
+
+    try:
+        proc = subprocess.Popen(
             cmd,
             shell=True,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=120,
         )
+        assert proc.stdout is not None
 
-        output = result.stdout.strip()
-        if not output:
-            _console.print("[red]No output from architect agent.[/]")
-            if result.stderr:
-                _console.print(f"[dim]{result.stderr[:500]}[/]")
+        # Read output in a background thread so we can enforce a timeout on
+        # the main thread while still streaming lines to the console.
+        def _reader() -> None:
+            assert proc is not None and proc.stdout is not None
+            for line in proc.stdout:
+                collected.append(line)
+                # Stream every line to the console in real time.
+                print(line, end="", flush=True)
+
+        reader_thread = threading.Thread(target=_reader, daemon=True)
+        reader_thread.start()
+
+        start = time.monotonic()
+        while proc.poll() is None:
+            elapsed = int(time.monotonic() - start)
+            if elapsed >= timeout:
+                _last_architect_timed_out = True
+                proc.kill()
+                break
+            time.sleep(0.25)
+
+        # Give the reader thread a moment to flush remaining output.
+        reader_thread.join(timeout=3)
+
+        # Write captured output to a log file in the project logs directory.
+        log_path = _write_generate_log(collected, project_dir, attempt)
+        if log_path is not None:
+            log_rel = log_path.relative_to(project_dir) if project_dir else log_path
+            _console.print(f"  [dim]→ {log_rel}[/]")
+
+        if _last_architect_timed_out:
+            elapsed = int(time.monotonic() - start)
+            _console.print(
+                f"[red]Architect agent timed out after {elapsed}s "
+                f"({len(collected)} lines captured).[/]"
+            )
+            # Try to salvage partial output.
+            partial = "".join(collected).strip()
+            if partial:
+                _console.print(
+                    f"[dim]Partial output ({len(partial)} chars) — attempting JSON extraction…[/]"
+                )
+                result = _extract_json(partial)
+                if result is not None:
+                    _console.print(
+                        "[green]✔ Extracted valid JSON from partial output.[/]"
+                    )
+                    return result
+                _console.print(
+                    "[dim]Could not extract valid JSON from partial output.[/]"
+                )
+                # Show first/last part for debugging.
+                preview = partial[:300] + ("\n…" if len(partial) > 300 else "")
+                _console.print(f"[dim]Output preview:[/]\n{preview}")
             return None
 
-        # Extract JSON from the output (skip any non-JSON preamble).
+        # Process finished normally.
+        output = "".join(collected).strip()
+        if proc.returncode != 0:
+            _console.print(
+                f"[red]Architect agent exited with code {proc.returncode}.[/]"
+            )
+            if output:
+                _console.print(f"[dim]{output[:800]}[/]")
+            return None
+
+        if not output:
+            _console.print("[red]No output from architect agent.[/]")
+            return None
+
         return _extract_json(output)
 
-    except subprocess.TimeoutExpired:
-        _console.print("[red]Architect agent timed out.[/]")
+    except FileNotFoundError:
+        _console.print(
+            f"[red]opencode binary not found: {OPENCODE_CMD!r}[/]\n"
+            "[dim]Set OPENCODE_CMD env var or ensure opencode is on PATH.[/]"
+        )
         return None
     except Exception as exc:
         _console.print(f"[red]Error calling architect: {exc}[/]")
         return None
     finally:
-        Path(tmpfile).unlink(missing_ok=True)
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+
+
+def _write_generate_log(
+    collected: list[str], project_dir: Path | None, attempt: int
+) -> Path | None:
+    """Write ANSI-stripped captured output to the project's logs directory.
+
+    Log path: ``<project_dir>/logs/roadmap-generate/<YYYYMMDD_HHMMSS>_generate_a<N>.log``
+
+    Returns the log path on success, or ``None`` if no project dir or write fails.
+    """
+    if project_dir is None or not collected:
+        return None
+    try:
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_dir = project_dir / "logs" / "roadmap-generate"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / f"{timestamp}_generate_a{attempt}.log"
+        with log_path.open("w", encoding="utf-8", errors="replace") as fh:
+            for line in collected:
+                fh.write(_strip_ansi(line))
+        return log_path
+    except Exception as exc:  # noqa: BLE001
+        _console.print(f"[dim](Could not write generate log: {exc})[/]")
+        return None
 
 
 def _extract_json(text: str) -> str | None:

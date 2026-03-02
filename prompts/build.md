@@ -2,67 +2,38 @@
 
 {{LANG_LINE}}
 
-## Output locations
-
-{{LOCATIONS}}
+## Outputs: {{LOCATIONS}}
 
 {{IMPORT_RULES}}
 
-## Requirements
+## Rules
 
-- Implementation goes in `{{SRC}}/`; tests go in `{{TESTS}}/`.
-- Tests must cover all public behaviour, edge cases, and error paths.
-- No speculative features — implement only what this task specifies.
-- Do not use deprecated APIs or language features — the linter enforces
-  `@typescript-eslint/no-deprecated` and will fail on any usage flagged as
-  `@deprecated`.
-- Docstrings / JSDoc on every public module, class, and function:
-  - **One sentence** — what it does, nothing more.
-  - List each parameter and return value on its own line (name + brief
-    type/purpose).
-  - No `Example:`, `Note:`, or `Raises:` sections.
-- Inline comments only on genuinely non-obvious lines; skip anything
-  self-explanatory.
-- **Maintain `.gitignore`** — ensure a `.gitignore` exists at the project root
-  and is kept up to date. Any file or directory that should not be tracked by
-  git (generated artefacts, dependency caches, secrets, editor/OS metadata,
-  test output, logs) must have an entry. Add entries for any new artefacts
-  introduced by this task.
+- Code in `{{SRC}}/`, tests in `{{TESTS}}/`. Cover all public behaviour, edge cases, error paths.
+- Only what this task specifies — no speculative features. No deprecated APIs.
+- Docstrings on public module/class/function: one sentence + param/return lines. No `Example:`/`Note:`/`Raises:`.
+- Inline comments only on non-obvious logic.
+- Maintain `.gitignore` — add entries for any new generated artefacts, caches, or secrets.
 
-## Post-edit checklist
+## Post-edit check
 
-After writing or modifying any file, run the IDE diagnostic check:
-- **VS Code** — call the `get_errors` tool and fix every reported error or
-  lint suggestion before finishing.
-- **Headless / other editor** — run the ecosystem CLI linter
-  (`ruff check .`, `npx tsc --noEmit`, `deno check && deno lint`,
-  `go vet ./...`, `cargo clippy -- -D warnings`) and resolve all output.
+Run `get_errors` (VS Code) or ecosystem CLI linter and fix all errors/suggestions before proceeding.
 
-Only proceed to the dependency checklist once the diagnostic check is clean.
+## Deps
 
-## Dependency checklist
-
-For every third-party import you used, confirm it is declared in the manifest.
+Confirm every third-party import is in the manifest:
 
 {{MANIFEST_TABLE}}
 
-Stdlib / built-ins don't need declaring. Create the manifest if it doesn't exist
-yet.
+Create manifest if missing. Stdlib needs no entry.
 
 {{DOCKERFILE_RULES}}{{DEPLOY_RULES}}{{PROJECT_CONTEXT}}
 
-## Task specification
+## Spec
 
 {{TASK}}
 
 {{TASK_SPEC}} {{CONTEXT_FILES}}
 
-## Documentation
+## Docs
 
-After implementing and verifying the task, update or create `README.md` at the
-project root with these sections (keep existing content that is still accurate):
-
-1. **What it is** — one-paragraph summary.
-2. **Structure** — directory tree with a one-line description per module.
-3. **How to run** — exact install + run commands.
-4. **How to test** — exact command to run the test suite.
+Update/create project `README.md`: (1) summary, (2) directory tree, (3) how to run, (4) how to test.

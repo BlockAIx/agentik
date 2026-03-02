@@ -1,262 +1,102 @@
 # Generate ROADMAP.json
 
-You are an expert software architect. Your job is to turn a natural-language
-project description into a valid `ROADMAP.json` that the agentik runner will
-execute task-by-task through its automated pipeline:
+You are an expert software architect generating a `ROADMAP.json` for the agentik automated pipeline:
+`Build → Deps → Test → Coverage → Fix → Static Checks → Static Fix → Commit → Notify → Deploy`
 
-```
-Build → Deps → Test → Coverage → Fix (retry) → Static Checks → Static Fix (retry) → Commit → Notify → Deploy hook
-```
+The next instructions are all information about how you should creat the `ROADMAP.json`. Ignore existing `ROADMAP.json`, do not read any files, simply generate the JSON.
 
-Each task is handed to a build agent (a senior-level AI coder) that implements
-the code, writes tests, and runs static checks — all automatically. Your
-ROADMAP must be precise enough that these agents produce correct, working code
-without human intervention.
+Each task is handed to a build agent (a senior-level AI coder) that implements the code, writes tests, and runs static checks — all automatically. Your ROADMAP must be precise enough that these agents produce correct, working code without human intervention.
 
-**Respect the user's choices.** If the project description specifies a tech
-stack, libraries, frameworks, or architectural patterns (e.g. "use Flask",
-"React with Tailwind", "SQLAlchemy + Alembic", "monorepo with pnpm
-workspaces"), you **must** use exactly those technologies. Do not substitute
-alternatives, omit requested libraries, or add competing ones. Wire the chosen
-stack into the root task's manifest, configuration files, and preamble so every
-subsequent task builds on it.
-
-**Use latest versions when unspecified.** If the description names a technology
-but does not pin a version (e.g. "use FastAPI" without "FastAPI 0.95"), default
-to the latest stable release. Find it if possible dynamically using package managers.
-
-**Output ONLY valid JSON** — no markdown fences, no commentary, no explanation.
-The output must pass `python check_roadmap.py` with zero errors.
+**Rules:** Use exactly the tech stack the user specifies — no substitutions. Specify deps without pinned versions (the build agent pins at runtime). Output ONLY valid JSON — no fences, no commentary. Must pass `python check_roadmap.py` with zero errors.
 
 ---
 
-## Top-level structure
+## Schema
 
 ```json
-{
-  "name": "<Project Name>",
-  "ecosystem": "{{ECOSYSTEM}}",
-  "preamble": "<Architecture notes injected into every build prompt — keep short>",
-  "git": { "enabled": true },
-  "tasks": [ ... ]
-}
+{ "name": "<string>", "ecosystem": "{{ECOSYSTEM}}", "preamble": "<2-4 sentences>", "git": {"enabled": true}, "tasks": [...] }
 ```
 
-| Field       | Required | Type   | Notes                                                        |
-|-------------|----------|--------|--------------------------------------------------------------|
-| `name`      | **yes**  | string | Project name (used in commits, logs, and branch names)       |
-| `ecosystem` | **yes**  | string | One of: `python`, `deno`, `node`, `go`, `rust`               |
-| `preamble`  | no       | string | Design constraints / architecture notes injected into every build prompt. Keep concise — 2–4 sentences covering tech choices, coding style, and structural boundaries. |
-| `git`       | no       | object | `{ "enabled": true }` to opt in to runner-managed git        |
-| `tasks`     | **yes**  | array  | Topologically ordered array of task objects                   |
+**Top-level fields** (only these are allowed): `name` (req), `ecosystem` (req: python|deno|node|go|rust), `preamble`, `git`, `tasks` (req), `min_coverage` (int 0-100, default 80), `notify` (`{url, events}`), `deploy` (`{enabled, script, env}` — only if description mentions deployment).
 
-**No other top-level fields are allowed** except `name`, `ecosystem`, `preamble`,
-`git`, `tasks`, `min_coverage`, `notify`, and `deploy`.
+For `name`: human-friendly. Folder slug = lowercase + hyphens. Python package = underscores.
+
+**Task fields** (only these are allowed): `id` (req, sequential int from 1), `title` (req, 2-6 words, slug-safe), `depends_on` (req, int array), `outputs` (req\*, string array of exact paths), `acceptance` (req\*, one-line criterion), `description` (req, detailed spec), `context` (optional file list), `agent` ("build"|"architect"|"milestone"), `version` (milestone only), `deploy` (bool).
+\* Not required for milestone tasks.
 
 ---
 
-## Task object
+## Dependency rules
 
-| Field        | Required    | Type             | Notes                                                        |
-|--------------|-------------|------------------|--------------------------------------------------------------|
-| `id`         | **yes**     | integer          | Sequential starting from 1 — no gaps, no duplicates          |
-| `title`      | **yes**     | string           | 2–6 word imperative title (becomes git branch name). Letters, digits, hyphens, spaces only — no special characters. |
-| `depends_on` | **yes**     | array of ints    | Task IDs this depends on; the root task MUST be `[]`         |
-| `outputs`    | **yes**\*   | array of strings | Files this task creates or modifies (exact paths)            |
-| `acceptance` | **yes**\*   | string           | One-line done criterion (e.g. "all tests in tests/test_board.py pass") |
-| `description`| **yes**     | string           | Detailed spec for a senior engineer (see below)              |
-| `context`    | no          | array of strings | Files pre-embedded in the build prompt. Optional — agents can read files on their own. Only use for large or non-obvious dependencies. |
-| `agent`      | no          | string           | `"build"` (default), `"architect"`, or `"milestone"`         |
-| `version`    | no          | string           | Semver tag for milestone tasks only (e.g. `"0.1.0"`)        |
-| `deploy`     | no          | boolean          | `true` to trigger the deploy hook after this task's commit   |
-
-\* Not required for `agent: "milestone"` tasks.
-
-**No other task fields are allowed.** The validator (`check_roadmap.py`) rejects
-unknown keys and will fail the ROADMAP.
+1. **One root task** — exactly one task with `depends_on: []`. It scaffolds the project: dirs, manifest, config, shared types/stubs, test harness. Keep minimal — stubs only, feature logic in later tasks.
+2. **All non-root tasks must declare dependencies** — list IDs of tasks whose outputs are needed.
+3. **No forward/self references** — only reference lower IDs.
+4. **Parallel tasks = disjoint outputs** — same `depends_on` set = concurrent execution. No shared files (README, barrel exports, registries) in parallel outputs; use a later integration task.
+5. **Sequential IDs** — 1, 2, 3, ... no gaps.
+6. **Titles ≤ 6 words**, slug-friendly.
 
 ---
 
-## Dependency rules (all enforced by the validator)
+## Ecosystem conventions
 
-The validator runs these checks — violating any of them is an **error** that
-blocks the pipeline:
+| Ecosystem | Source root | Tests | Manifest |
+|-----------|------------|-------|----------|
+| Python | `<pkg_name>/` | `tests/test_<mod>.py` | `requirements.txt` |
+| Deno | `src/` | `tests/*.test.ts` | `deno.json` |
+| Node | `src/` | `tests/*.test.ts` | `package.json` |
+| Go | project root | `*_test.go` | `go.mod` |
+| Rust | `src/` | `#[cfg(test)]` or `tests/` | `Cargo.toml` |
 
-1. **Exactly one root task** — only one task may have `depends_on: []`. This is
-   the project scaffolding task (layer 0). It always runs alone before anything
-   else.
+Python: package imports (`from myapp.mod import X`), fixtures in `conftest.py`. Node: strict `tsconfig.json`, vitest/jest. Deno: explicit return types, no `any`.
 
-2. **The root task must fully prepare the project** — it must create:
-   - The directory layout matching the ecosystem conventions (see below).
-   - The manifest / dependency file (`requirements.txt`, `package.json`,
-     `deno.json`, `go.mod`, `Cargo.toml`) with all third-party deps pinned.
-   - Configuration files (linter, formatter, tsconfig, etc.).
-   - Shared types / interfaces / base classes that later tasks import.
-   - The test harness (`conftest.py` for Python, test config for TS/JS, etc.).
-
-3. **Every non-root task must declare its dependencies** — list the `id`s of
-   tasks whose outputs must exist before this task can start. Ask: "which files
-   from earlier tasks does this task import or depend on?" Never leave
-   `depends_on: []` on a non-root task.
-
-4. **No forward references** — `depends_on` may only reference tasks with a
-   *lower* `id`. The task list must be topologically ordered.
-
-5. **No self-references** — a task cannot depend on itself.
-
-6. **Parallel tasks must have disjoint `outputs`** — tasks that share the same
-   `depends_on` set will run concurrently. If two parallel tasks write the same
-   file, the build will conflict. Never duplicate a file path across parallel
-   tasks' `outputs`.
-
-7. **Task numbering must be sequential** — `1, 2, 3, ...` with no gaps and no
-   duplicate IDs.
-
-8. **Titles ≤ 6 words** — titles become git branch names; keep them short and
-   slug-friendly.
+**Acceptance defaults:** Python=`pytest tests/test_<mod>.py -q`, Node=`pnpm test`, Deno=`deno test tests/<mod>.test.ts`, Go=`go test ./...`, Rust=`cargo test`.
 
 ---
 
-## Ecosystem-specific conventions
+## Task descriptions
 
-| Ecosystem | Source root            | Test location                      | Manifest           |
-|-----------|------------------------|------------------------------------|---------------------|
-| Python    | `<project_name>/`      | `tests/test_<module>.py`           | `requirements.txt`  |
-| Deno      | `src/`                 | `tests/*.test.ts`                  | `deno.json`         |
-| Node      | `src/`                 | `tests/*.test.ts`                  | `package.json`      |
-| Go        | project root           | `*_test.go`                        | `go.mod`            |
-| Rust      | `src/`                 | inline `#[cfg(test)]` or `tests/`  | `Cargo.toml`        |
+The `description` is a brief to a **senior AI engineer** — state WHAT to build
+and WHY, not HOW to implement every line. The build agent has full file access,
+reads dependency code on its own, and makes implementation decisions. Over-specifying
+produces bloated ROADMAPs that waste tokens and constrain the agent unnecessarily.
 
-For **Python**: package name = folder name with hyphens converted to
-underscores. Tests import with the package name (`from myapp.board import Board`),
-never relative imports. Shared test fixtures go in `conftest.py`.
+**Keep each description to 3-8 sentences.** Include:
+- The module's purpose and responsibility
+- Key public types/interfaces it must expose (names only — the agent designs fields)
+- How it connects to earlier modules (import sources)
+- Important constraints, edge cases, or non-obvious behaviour
+- Verification command (if not obvious from `acceptance`)
 
-For **Node/TS**: the root task must create `tsconfig.json` with strict settings.
-Tests use vitest or jest depending on the framework.
+**Do NOT include:**
+- Full method signatures with every parameter and return type
+- Line-by-line implementation instructions
+- File-by-file breakdowns (the `outputs` field already lists files)
+- Constructor arguments, private helpers, or internal details
+- Boilerplate the agent can infer (DI wiring, standard CRUD, DTO validation decorators)
 
-For **Deno**: explicit return types on all exports; no `any`; no `!`
-assertions.
+Good: `"Implement Board(w,h) with place, remove, is_full, and clear_rows methods. place on an occupied cell returns False. clear_rows returns the count of cleared rows (0 if none). Import Piece from pieces module."`
+Bad: `"Implement Board(w: int, h: int). Methods: place(x: int, y: int, val: str) → bool — sets grid[y][x] = val, returns False if occupied. remove(x: int, y: int) → None — sets grid[y][x] = None. is_full() → bool — returns True when all cells non-None. clear_rows() → int — iterate rows top-down, if all cells filled remove row, shift above rows down, increment counter..."`
 
----
-
-## Writing excellent task descriptions
-
-The `description` field is the **primary input** to the build agent. A vague
-description produces vague, broken code. Write each description as a detailed
-brief to a senior engineer:
-
-- **Specify data structures** — name classes, interfaces, enums, and their
-  fields with types.
-- **Specify function signatures** — name public functions/methods, their
-  parameters, return types, and behaviour.
-- **Specify edge cases** — what happens on empty input, overflow, invalid state,
-  concurrent access, etc.
-- **Specify constraints** — performance requirements, memory limits, thread
-  safety, API compatibility.
-- **Mention what to import** — if the task depends on a type or function from
-  an earlier task, name it explicitly so the agent knows which module to import.
-- **Keep it self-contained** — the agent reads this description and the
-  `outputs` list to know what to build. Don't assume context from other tasks'
-  descriptions.
-- **No filler** — skip motivational text, background context, or explanations
-  of *why*. Focus on *what* and *how*.
-
-### Example of a good description
-
-```
-"description": "Implement the Board class in myapp/board.py.\n\nBoard(width: int, height: int) — creates a 2D grid of cells, each initially empty (0).\n\nMethods:\n- place(x, y, value) → bool: set cell if in-bounds and empty, return True; otherwise False.\n- remove(x, y) → None: clear the cell (set to 0). Raise ValueError if out of bounds.\n- is_full() → bool: True when no empty cells remain.\n- clear_rows() → int: remove all completely filled rows, shift rows above down, return count of cleared rows.\n\nEdge cases: place() on an occupied cell returns False without overwriting. clear_rows() with no full rows returns 0 and does not shift anything."
-```
-
-### Example of a bad description
-
-```
-"description": "Create the board module with basic grid functionality."
-```
+The build agent is not a code monkey following a spec — it's a senior engineer.
+Give it the architecture; let it write the code.
 
 ---
 
-## Design layers — structuring the dependency graph
+## DAG layers
 
-Think of the ROADMAP as a directed acyclic graph (DAG) organised in layers.
-Design the layers intentionally before writing individual tasks:
+- **Layer 0:** One root task (`depends_on:[]`) — scaffold only.
+- **Layer 1-N:** Feature tasks. Same-layer = parallel (disjoint outputs). Cross-layer when dependencies exist.
+- **Milestones:** `agent:"milestone"` at natural boundaries. Read-only review (no file writes). Must `depends_on` all reviewed tasks. Unique `depends_on` set. Include `version` field for semver tag. No `outputs`/`acceptance`.
 
-### Layer 0 — Foundation (single root task)
+Honour user-specified milestones exactly — preserve names, versions, and ordering.
 
-One task with `depends_on: []`. Sets up the entire project skeleton: directory
-structure, manifest, config files, shared types/interfaces/base classes, and
-the test harness. This task runs alone and must produce everything that later
-tasks import.
-
-### Layer 1–N — Feature tasks
-
-Each task builds one module or feature. Tasks in the same layer (same
-`depends_on` set) run in **parallel** — their outputs must be disjoint.
-
-Design features to be as independent as possible so more tasks can run in
-parallel. When a feature needs another feature's output, put it in a later
-layer.
-
-### Milestone tasks — review gates
-
-Place `agent: "milestone"` tasks at **natural feature boundaries**, not at
-fixed intervals. A milestone makes sense when:
-
-- A coherent set of features is complete and should be reviewed together.
-- You want a semver tag marking a usable project state (e.g. `"0.1.0"` after
-  core functionality works, `"0.2.0"` after the UI is added).
-- The project has reached an integration point where multiple features combine.
-
-Milestones **cannot write files or run destructive commands** — they only read
-files, run `git log`, `git diff`, `grep`, etc. for review purposes. They always
-run alone (never in parallel). A milestone depends on **all preceding tasks**
-it is reviewing.
-
-**If the user's project description explicitly names milestones** (e.g. "v0.1
-should have X", "milestone: core engine done", "release 1.0 after Y"), you
-**must** honour them exactly:
-- Treat each named milestone as a hard architectural boundary.
-- Place all features belonging to that milestone before it in the DAG.
-- Use the user-provided name/version as the milestone `title` and `version`.
-- Do not merge, drop, reorder, or rename user-specified milestones.
-- Where the user did not specify versions, derive semver tags that reflect the
-  described scope (e.g. `"0.1.0"` for an MVP milestone, `"1.0.0"` for a
-  production-ready release).
-
-Give each milestone a `version` field for the semver tag. Do not include
-`outputs` or `acceptance` on milestone tasks.
-
-**Example milestone placement:**
-
-```
-Task 1: Foundation scaffold         (layer 0)
-Task 2: Data models                 (layer 1)
-Task 3: Business logic              (layer 1, parallel with 2 if independent)
-Task 4: API/CLI layer               (layer 2, depends on 2+3)
-Task 5: Milestone — Core v0.1.0    (depends on 1–4, reviews everything so far)
-Task 6: UI/rendering                (layer 3, depends on 4)
-Task 7: Polish + integration tests  (layer 4, depends on 6)
-Task 8: Milestone — Release v0.2.0 (depends on 5–7)
-```
+Example: `T1:scaffold → T2,T3:features(parallel) → T4:integration → T5:milestone v0.1.0 → T6:more features → T7:milestone v0.2.0`
 
 ---
 
-## Validation
+## Validation checklist
 
-The generated JSON must pass `python check_roadmap.py` with zero errors.
-The validator checks:
-
-- Valid JSON structure with recognised top-level and task-level fields only.
-- Ecosystem is one of: `python`, `deno`, `node`, `go`, `rust`.
-- Sequential task numbering with no gaps or duplicates.
-- Every non-milestone task has `outputs`, `acceptance`, and `depends_on`.
-- Exactly one root task (one task with `depends_on: []`).
-- No forward references in `depends_on` (only lower IDs).
-- No self-references.
-- Parallel tasks (same `depends_on` set) have disjoint `outputs`.
-- Titles ≤ 6 words, slug-friendly characters only.
-- No unknown fields on tasks (only: `id`, `title`, `agent`, `ecosystem`,
-  `depends_on`, `context`, `outputs`, `acceptance`, `version`, `description`,
-  `deploy`).
+Must pass: valid JSON, recognised fields only, sequential IDs, ecosystem valid, one root task, no forward/self refs, parallel outputs disjoint, titles ≤6 words, non-milestone tasks have outputs+acceptance+depends_on.
 
 ---
 
@@ -266,10 +106,4 @@ The validator checks:
 
 ---
 
-**Before generating:** re-read the description above and identify any milestones
-the user explicitly mentioned (named releases, version targets, phase
-boundaries, or "done when" statements). If any are found, treat them as fixed
-anchors in your dependency graph — every feature they cover must be placed
-before them, and their titles/versions must match what the user described.
-
-Generate the ROADMAP.json now. Output ONLY the JSON, nothing else.
+Identify any user-specified milestones and treat them as fixed DAG anchors. Generate the ROADMAP.json now.

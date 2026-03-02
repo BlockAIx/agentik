@@ -5,7 +5,7 @@
   "max_parallel_agents": 3,
   "token_prices_usd_per_million": {
     "input": 1.25,
-    "output": 5.00,
+    "output": 5,
     "cache_read": 0.31,
     "cache_write": 1.25
   }

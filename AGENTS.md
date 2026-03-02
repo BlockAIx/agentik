@@ -250,7 +250,6 @@ projects/<your-project>/ROADMAP.json
 | `id`          | **yes**  | integer          | `1`                                                 |
 | `title`       | **yes**  | string           | `"Parser Core"`                                     |
 | `agent`       | no       | string           | `"architect"` or `"milestone"` (default: `"build"`) |
-| `ecosystem`   | no       | string           | `"deno"` (overrides project default)                |
 | `depends_on`  | **yes**  | array of ints    | `[1, 2]` or `[]`                                    |
 | `context`     | no       | array of strings | `["src/models.py"]` — pre-embeds files in the prompt; mostly optional since agents can read files on their own |
 | `outputs`     | **yes**\* | array of strings | `["src/parser.py", "tests/test_parser.py"]`         |

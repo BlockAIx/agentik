@@ -241,7 +241,6 @@ repository with automatic branching and commits.
 | `acceptance`  | **yes**\*          | string           | Human-readable done criterion          |
 | `description` | no                 | string           | Full task spec (can contain markdown)  |
 | `agent`       | no                 | string           | Override agent (default: `"build"`)    |
-| `ecosystem`   | no                 | string           | Override ecosystem for this task       |
 | `context`     | no                 | array of strings | Files pre-injected into the build prompt |
 | `version`     | no                 | string           | Semver tag (milestone tasks only)      |
 | `deploy`      | no                 | boolean          | Run deploy hook after this task        |

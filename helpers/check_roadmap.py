@@ -21,9 +21,7 @@ from typing import NamedTuple
 # Titles become git branch names; keep slug-friendly and reasonably short.
 MAX_TITLE_WORDS: int = 6
 
-VALID_AGENTS: frozenset[str] = frozenset(
-    {"build", "fix", "architect", "milestone"}
-)
+VALID_AGENTS: frozenset[str] = frozenset({"build", "fix", "architect", "milestone"})
 
 VALID_ECOSYSTEMS: frozenset[str] = frozenset({"python", "deno", "node", "go", "rust"})
 
@@ -40,7 +38,6 @@ _ALL_TASK_FIELDS = frozenset(
         "id",
         "title",
         "agent",
-        "ecosystem",
         "depends_on",
         "context",
         "outputs",
@@ -78,7 +75,6 @@ class Task:
     depends_on: list[int] = field(default_factory=list)
     acceptance: str = ""
     agent: str = ""
-    ecosystem: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +123,6 @@ def parse_roadmap(data: dict) -> tuple[str, list[Task]]:
 
         t.acceptance = str(entry.get("acceptance", "")).strip()
         t.agent = str(entry.get("agent", "")).strip()
-        t.ecosystem = str(entry.get("ecosystem", "")).strip()
 
         tasks.append(t)
 
@@ -255,10 +250,6 @@ def check_fields(_data: dict, tasks: list[Task]) -> list[Issue]:
                     tag,
                     f"Unknown agent '{t.agent}'; valid: {sorted(VALID_AGENTS)}",
                 )
-            )
-        if t.ecosystem and t.ecosystem not in VALID_ECOSYSTEMS:
-            issues.append(
-                Issue("WARNING", tag, f"Unknown ecosystem override '{t.ecosystem}'")
             )
         # Warn about unrecognised keys.
         for key in t.raw:

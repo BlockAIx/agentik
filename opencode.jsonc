@@ -1,9 +1,9 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "github-copilot/gemini-3.1-pro-preview",
+  "model": "github-copilot/claude-sonnet-4.6",
   "agent": {
     "build": {
-      "model": "github-copilot/gemini-3.1-pro-preview",
+      "model": "github-copilot/claude-sonnet-4.6",
       "max_steps": 3,
       "permission": {
         "bash": {
@@ -16,7 +16,7 @@
       }
     },
     "fix": {
-      "model": "github-copilot/gemini-3.1-pro-preview",
+      "model": "github-copilot/claude-sonnet-4.6",
       "max_steps": 3,
       "permission": {
         "bash": {
@@ -29,7 +29,7 @@
       }
     },
     "architect": {
-      "model": "github-copilot/gemini-3.1-pro-preview",
+      "model": "github-copilot/claude-opus-4.6",
       "max_steps": 3,
       "permission": {
         "edit": "deny",
@@ -39,7 +39,7 @@
       }
     },
     "milestone": {
-      "model": "github-copilot/gemini-3.1-pro-preview",
+      "model": "github-copilot/claude-sonnet-4.6",
       "max_steps": 3,
       "permission": {
         "edit": "deny",

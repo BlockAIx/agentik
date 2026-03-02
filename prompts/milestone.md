@@ -1,50 +1,34 @@
 # Milestone Review — {{PROJECT_NAME}} v{{VERSION}}
 
-All tasks up to this checkpoint are implemented and tests are passing. Before
-tagging **v{{VERSION}}** on main, verify the project is in a releasable state.
+All tasks through this checkpoint pass tests. Verify releasable state before tagging **v{{VERSION}}**.
 
 **Project:** `{{PROJECT_NAME}}` | **Package:** `{{PKG}}`
 
-## File tree
-
+## Files
 ```
 {{LISTING_TEXT}}
 ```
 
 ## ROADMAP
-
 ```markdown
 {{ROADMAP}}
 ```
 
-## Task specification
-
+## Spec
 {{TASK}}
 
 {{TASK_SPEC}}
 
 ## Checklist
 
-Read any files you need, then report on each item:
+Read files as needed, report ✔/⚠/✗ per item:
 
-1. **Tests** — do all test suites pass? Any obviously missing coverage for
-   public APIs delivered so far?
-2. **Dependencies** — all runtime libs declared in the manifest? Versions pinned
-   where reproducibility matters?
-3. **Integration** — are the modules delivered up to this milestone wired
-   together and reachable from the entry point?
-4. **Regressions** — does any completed task's output reference code that was
-   later moved, renamed, or deleted?
-5. **Config files** — do `tsconfig.json`, `deno.json`, `package.json`, etc.
-   match what the codebase actually uses?
-6. **Security** — secrets in env vars? No hardcoded credentials?
-7. **Documentation** — README up to date with the current feature set?
+1. **Tests** — all passing? Missing coverage for public APIs?
+2. **Deps** — all runtime libs in manifest? Versions pinned?
+3. **Integration** — modules wired together, reachable from entry point?
+4. **Regressions** — any refs to moved/renamed/deleted code?
+5. **Config** — tsconfig/deno.json/package.json match actual usage?
+6. **Security** — secrets in env vars only? No hardcoded creds?
+7. **Docs** — README current?
 
-## Output
-
-- ✔ / ⚠ / ✗ status per item.
-- Specific findings with filename + line where possible.
-- Prioritised issue list (critical → nice-to-have).
-
-Report real problems only. If everything looks good, confirm the milestone is
-ready to tag.
+Report: ✔/⚠/✗ per item, specific findings (file+line), prioritised issues. Real problems only.

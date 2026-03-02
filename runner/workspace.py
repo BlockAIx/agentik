@@ -646,8 +646,8 @@ def ensure_workspace_dirs(project_dir: Path) -> None:
     _sync_opencode_config(project_dir)
     ensure_project_git(project_dir)
     _ensure_logs_gitignored(project_dir)
-    if not (project_dir / "AGENTS.md").exists():
-        generate_project_agents_md(project_dir)
+    # Always regenerate so AGENTS.md stays in sync with the current ROADMAP.
+    generate_project_agents_md(project_dir)
 
 
 def _ensure_logs_gitignored(project_dir: Path) -> None:
@@ -853,6 +853,21 @@ def generate_project_agents_md(project_dir: Path) -> None:
             preamble + "\n",
         ]
 
+    # Ecosystem-aware file extensions for the task example.
+    _ext = {"python": ".py", "node": ".ts", "deno": ".ts", "go": ".go", "rust": ".rs"}
+    _test_ext = {
+        "python": "test_new_module.py",
+        "node": "new_module.test.ts",
+        "deno": "new_module.test.ts",
+        "go": "new_module_test.go",
+        "rust": "new_module.rs",
+    }
+    ext = _ext.get(eco, ".py")
+    test_file = _test_ext.get(eco, f"test_new_module{ext}")
+    ctx_file = f"{src_rel}/existing_module{ext}"
+    out_file = f"{src_rel}/new_module{ext}"
+    test_path = f"tests/{test_file}"
+
     out_lines += [
         "\n---\n",
         "## Repository layout\n",
@@ -867,9 +882,9 @@ def generate_project_agents_md(project_dir: Path) -> None:
         '  "id": 3,\n'
         '  "title": "Short Title",\n'
         '  "depends_on": [1, 2],\n'
-        '  "context": ["src/existing_module.ts"],\n'
-        '  "outputs": ["src/new_module.ts", "tests/new_module.test.ts"],\n'
-        '  "acceptance": "all tests in tests/new_module.test.ts pass",\n'
+        f'  "context": ["{ctx_file}"],\n'
+        f'  "outputs": ["{out_file}", "{test_path}"],\n'
+        f'  "acceptance": "all tests in {test_path} pass",\n'
         '  "description": "Detailed implementation spec…"\n'
         "}\n"
         "```\n",

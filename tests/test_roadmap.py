@@ -87,37 +87,6 @@ class TestGetTaskBody:
         assert body == ""
 
 
-# -- get_task_ecosystem --------------------------------------------------------
-
-
-class TestGetTaskEcosystem:
-    def test_uses_project_ecosystem_by_default(self, tmp_project: Path) -> None:
-        from runner.roadmap import get_task_ecosystem
-
-        assert get_task_ecosystem("## 001 - First Task", tmp_project) == "python"
-
-    def test_task_level_override(self, tmp_path: Path) -> None:
-        from runner.roadmap import get_task_ecosystem
-
-        project = tmp_path / "proj"
-        project.mkdir()
-        data = _minimal_roadmap()
-        data["tasks"][0]["ecosystem"] = "deno"
-        _write_roadmap(project, data)
-        assert get_task_ecosystem("## 001 - Only Task", project) == "deno"
-
-    def test_custom_ecosystem_accepted(self, tmp_path: Path) -> None:
-        from runner.roadmap import get_task_ecosystem
-
-        project = tmp_path / "proj"
-        project.mkdir()
-        data = _minimal_roadmap()
-        data["tasks"][0]["ecosystem"] = "custom"
-        _write_roadmap(project, data)
-        result = get_task_ecosystem("## 001 - Only Task", project)
-        assert result == "custom"
-
-
 # -- is_git_managed ------------------------------------------------------------
 
 
@@ -845,6 +814,6 @@ class TestGetTaskLayers:
         assert len(layers) == 5
         assert layers[0] == ["## 001 - Root"]
         assert layers[1] == ["## 002 - Core"]
-        assert layers[2] == ["## 003 - Alpha"]   # milestone barrier
+        assert layers[2] == ["## 003 - Alpha"]  # milestone barrier
         assert layers[3] == ["## 004 - Feature"]
         assert layers[4] == ["## 005 - Extension"]

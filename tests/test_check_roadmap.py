@@ -3,7 +3,6 @@
 import json
 from pathlib import Path
 
-
 from helpers.check_roadmap import (
     check_architecture,
     check_checkpoint_refs,
@@ -110,22 +109,6 @@ class TestParseRoadmap:
         )
         _, tasks = parse_roadmap(data)
         assert tasks[0].agent == "architect"
-
-    def test_extracts_ecosystem(self) -> None:
-        data = _roadmap(
-            tasks=[
-                {
-                    "id": 1,
-                    "title": "A",
-                    "ecosystem": "deno",
-                    "depends_on": [],
-                    "outputs": ["x"],
-                    "acceptance": "ok",
-                }
-            ]
-        )
-        _, tasks = parse_roadmap(data)
-        assert tasks[0].ecosystem == "deno"
 
 
 # -- check_preamble -----------------------------------------------------------

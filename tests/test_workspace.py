@@ -808,6 +808,6 @@ class TestGenerateProjectAgentsMd:
         project.mkdir()
         _write_roadmap(project, _simple_roadmap("python"))
         (project / "AGENTS.md").write_text("# existing\n", encoding="utf-8")
-        # AGENTS.md present → should NOT call generate.
+        # AGENTS.md always regenerated to stay in sync with ROADMAP.
         ws.ensure_workspace_dirs(project)
-        assert calls == []
+        assert calls == [project]

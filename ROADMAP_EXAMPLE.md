@@ -42,7 +42,6 @@
 | `title`       | **yes**  | string           | Short imperative title (≤ 6 words, becomes branch name)      |
 | `depends_on`  | **yes**  | array of ints    | IDs this depends on; `[]` for independent tasks              |
 | `agent`       | no       | string           | `"build"` (default), `"milestone"`, `"architect"`  |
-| `ecosystem`   | no       | string           | Override project default for this task                       |
 | `context`     | no       | array of strings | Existing files pre-injected into the build prompt            |
 | `outputs`     | **yes**\* | array of strings | Files this task creates or modifies                          |
 | `acceptance`  | **yes**\* | string           | Done criterion checked by the runner                         |
