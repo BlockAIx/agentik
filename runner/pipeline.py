@@ -264,6 +264,15 @@ def process_task(
     )
     _console.rule(f"[bold cyan]{task}[/]{resume_note}", style="cyan")
 
+    # Log skills assigned to the agent for this task.
+    from runner.skills import get_agent_skills  # noqa: PLC0415
+
+    agent_name = "build"  # first pass is always the build agent
+    skills = get_agent_skills(agent_name, project_dir)
+    if skills:
+        skill_list = ", ".join(skills)
+        _console.print(f"[dim]Skills ({agent_name}):[/] [magenta]{skill_list}[/]")
+
     check_monthly_budget(project_dir=project_dir)
 
     from runner.workspace import ensure_feature_branch  # noqa: PLC0415
@@ -440,6 +449,14 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
     _console.print(f"[dim]Building {len(batch)} independent tasks in parallel[/]")
     for t in batch:
         _console.print(f"  [dim]→ {t}[/]")
+
+    # Log skills assigned to the build agent.
+    from runner.skills import get_agent_skills  # noqa: PLC0415
+
+    skills = get_agent_skills("build", project_dir)
+    if skills:
+        skill_list = ", ".join(skills)
+        _console.print(f"[dim]Skills (build):[/] [magenta]{skill_list}[/]")
 
     check_monthly_budget(project_dir=project_dir)
     save_parallel_batch(batch, project_dir)  # expose to web UI
