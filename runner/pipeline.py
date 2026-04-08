@@ -275,9 +275,17 @@ def process_task(
     for attempt in range(resume_attempt, MAX_ATTEMPTS):
         save_runner_state(project_dir, task, attempt, fix_logs)
 
+        from runner.tracing import get_trace  # noqa: PLC0415
+
+        trace = get_trace(task)
+        trace.attempts = attempt + 1
+        phase = "fix" if fix_logs else "build"
+        trace.begin(phase)
+
         try:
             passed, fix_logs = run_attempt(task, attempt, fix_logs, project_dir)
         except ModelConfigError as exc:
+            trace.end(ok=False, detail=str(exc))
             _console.print(
                 f"\n[red bold]✗ Model error (non-retriable):[/] {exc}\n"
                 "[yellow]Fix the model configuration in opencode.jsonc and re-run.[/]"
@@ -285,14 +293,26 @@ def process_task(
             _handle_task_failure(task, project_dir, fix_logs)
             raise  # Propagate — pipeline must stop immediately
 
+        trace.end(ok=passed, detail="" if passed else "tests failed")
+
         if passed:
+            trace.begin("finalise")
             finalise_task(task, project_dir)
+            trace.end()
+
+            from runner.tracing import save_traces  # noqa: PLC0415
+
+            save_traces(project_dir)
             return
 
         _console.print(f"  [yellow]Tests failed on attempt {attempt + 1}.[/]")
         if attempt == MAX_ATTEMPTS - 1:
             _console.print("[red]Max attempts reached.[/]")
             _handle_task_failure(task, project_dir, fix_logs)
+
+            from runner.tracing import save_traces  # noqa: PLC0415
+
+            save_traces(project_dir)
             return
 
 

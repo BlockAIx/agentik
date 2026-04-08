@@ -361,6 +361,17 @@ def get_log_content(name: str, task_slug: str, log_name: str) -> dict:
     return {"content": content, "name": log_name, "task_slug": task_slug}
 
 
+@app.get("/api/projects/{name}/traces")
+def get_traces(name: str) -> list:
+    """Return recorded pipeline traces for a project."""
+    from runner.tracing import load_traces  # noqa: PLC0415
+
+    project_dir = PROJECTS_ROOT / name
+    if not project_dir.is_dir():
+        raise HTTPException(404, "Project not found")
+    return load_traces(project_dir)
+
+
 @app.post("/api/projects/{name}/validate")
 def validate_roadmap(name: str) -> dict:
     """Validate the project's ROADMAP.json."""
