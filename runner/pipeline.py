@@ -669,6 +669,67 @@ def run_pipeline_headless(project_dir: Path, verbose: bool = False) -> None:
         pass
 
 
+# ── Skills CLI helper ──────────────────────────────────────────────────────────
+
+
+def _manage_skills_interactive(project_dir: Path) -> None:
+    """Interactive CLI for assigning skills to agents."""
+    import questionary  # noqa: PLC0415
+
+    from runner.skills import (  # noqa: PLC0415
+        get_agent_skills,
+        list_skills,
+        save_agent_skills,
+    )
+
+    available = list_skills()
+    if not available:
+        _console.print(
+            "[yellow]No skills found. Add skill directories "
+            "under [bold]skills/[/bold] at the workspace root.[/]"
+        )
+        _console.print(
+            "[dim]Each skill needs a SKILL.md file and optionally a skill.json.[/]"
+        )
+        return
+
+    _console.print("\n[bold]Available skills:[/]")
+    for sk in available:
+        desc = f" — {sk['description']}" if sk.get("description") else ""
+        _console.print(f"  [cyan]{sk['slug']}[/]{desc}")
+
+    agents = ["build", "fix", "architect", "milestone"]
+    for agent in agents:
+        current = get_agent_skills(agent, project_dir)
+        choices = [
+            questionary.Choice(
+                title=f"{sk['slug']}" + (
+                    f"  ({sk['description'][:50]})" if sk.get("description") else ""
+                ),
+                value=sk["slug"],
+                checked=sk["slug"] in current,
+            )
+            for sk in available
+        ]
+        selected = questionary.checkbox(
+            f"Skills for [{agent}] agent:",
+            choices=choices,
+        ).ask()
+
+        if selected is None:
+            return  # Ctrl-C
+
+        if selected != current:
+            save_agent_skills(agent, project_dir, selected)
+            _console.print(
+                f"  [green]✓[/] {agent}: {', '.join(selected) if selected else '(none)'}"
+            )
+        else:
+            _console.print(f"  [dim]{agent}: unchanged[/]")
+
+    _console.print("\n[green]Skills configuration saved.[/]")
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 
@@ -722,6 +783,10 @@ def main() -> None:
                 ),
                 value="agents",
             ),
+            questionary.Choice(
+                title="🧩 Manage skills         (assign skills to agents)",
+                value="skills",
+            ),
         ],
         use_shortcuts=False,
     ).ask()
@@ -758,6 +823,10 @@ def main() -> None:
 
     if mode == "agents":
         generate_project_agents_md(project_dir)
+        return
+
+    if mode == "skills":
+        _manage_skills_interactive(project_dir)
         return
 
     # Derive verbose flag from the selected mode.

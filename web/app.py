@@ -582,6 +582,7 @@ def get_models(name: str) -> list[dict]:
                 "agent": agent_name,
                 "model": agent_config.get("model", default_model),
                 "max_steps": agent_config.get("max_steps", 3),
+                "skills": agent_config.get("skills", []),
             }
         )
     return result
@@ -614,6 +615,53 @@ async def update_model(name: str, agent: str, request: Request) -> dict:
     config["agent"][agent]["model"] = new_model
 
     config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+    return {"saved": True}
+
+
+# ── Skills management ─────────────────────────────────────────────────────────
+
+
+@app.get("/api/skills")
+def get_available_skills() -> list[dict]:
+    """List all installed skills from the workspace skills/ directory."""
+    from runner.skills import list_skills  # noqa: PLC0415
+
+    return list_skills()
+
+
+@app.get("/api/projects/{name}/skills/{agent}")
+def get_project_agent_skills(name: str, agent: str) -> list[str]:
+    """Get the skill slugs assigned to an agent in a project."""
+    if agent not in _AGENT_NAMES:
+        raise HTTPException(400, f"Unknown agent: {agent}")
+    project_dir = PROJECTS_ROOT / name
+    if not project_dir.is_dir():
+        raise HTTPException(404, "Project not found")
+
+    from runner.skills import get_agent_skills  # noqa: PLC0415
+
+    return get_agent_skills(agent, project_dir)
+
+
+@app.put("/api/projects/{name}/skills/{agent}")
+async def update_project_agent_skills(
+    name: str, agent: str, request: Request
+) -> dict:
+    """Set the skill list for an agent in a project."""
+    if agent not in _AGENT_NAMES:
+        raise HTTPException(400, f"Unknown agent: {agent}")
+    project_dir = PROJECTS_ROOT / name
+    if not project_dir.is_dir():
+        raise HTTPException(404, "Project not found")
+
+    body = await request.json()
+    slugs = body.get("skills", [])
+    if not isinstance(slugs, list):
+        raise HTTPException(400, "skills must be an array of strings")
+
+    from runner.skills import save_agent_skills  # noqa: PLC0415
+
+    save_agent_skills(agent, project_dir, slugs)
     return {"saved": True}
 
 

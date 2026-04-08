@@ -1,8 +1,8 @@
 /** TanStack Query hooks — all data fetching and mutations. */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { BudgetConfig } from '@/lib/api'
 import { api } from '@/lib/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 /* ── Query Keys ── */
 
@@ -19,6 +19,7 @@ const keys = {
   providers: ['providers'] as const,
   budgetConfig: ['budgetConfig'] as const,
   roadmap: (name: string) => ['roadmap', name] as const,
+  skills: ['skills'] as const,
 }
 
 /* ── Queries ── */
@@ -110,6 +111,13 @@ export function useRoadmap(name: string) {
   })
 }
 
+export function useSkills() {
+  return useQuery({
+    queryKey: keys.skills,
+    queryFn: ({ signal }) => api.getAvailableSkills(signal),
+  })
+}
+
 /* ── Mutations ── */
 
 export function useCreateProject() {
@@ -180,6 +188,17 @@ export function useUpdateModel(name: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.models(name) })
       qc.invalidateQueries({ queryKey: keys.availableModels })
+    },
+  })
+}
+
+export function useUpdateAgentSkills(name: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { agent: string; skills: string[] }) =>
+      api.updateAgentSkills(name, v.agent, v.skills),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.models(name) })
     },
   })
 }

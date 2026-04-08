@@ -26,7 +26,7 @@ Confirm every third-party import is in the manifest:
 
 Create manifest if missing. Stdlib needs no entry.
 
-{{DOCKERFILE_RULES}}{{DEPLOY_RULES}}{{PROJECT_CONTEXT}}{{DEP_NOTES}}
+{{DOCKERFILE_RULES}}{{DEPLOY_RULES}}{{PROJECT_CONTEXT}}{{DEP_NOTES}}{{SKILLS}}
 
 ## Spec
 

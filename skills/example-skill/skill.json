@@ -1,0 +1,8 @@
+{
+  "name": "example-skill",
+  "description": "A minimal example skill showing the expected structure.",
+  "agents": [
+    "build",
+    "architect"
+  ]
+}

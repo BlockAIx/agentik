@@ -1,15 +1,18 @@
-import { AlertTriangle, Cpu, Loader2 } from 'lucide-react'
-import { useCallback } from 'react'
 import { ModelCombobox } from '@/components/model-combobox'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
 import {
   useAvailableModels,
   useModels,
+  useSkills,
+  useUpdateAgentSkills,
   useUpdateModel,
 } from '@/hooks/use-queries'
-import type { AvailableModel, ModelConfig } from '@/lib/api'
+import type { AvailableModel, ModelConfig, SkillInfo } from '@/lib/api'
+import { AlertTriangle, BookOpen, Cpu, Loader2 } from 'lucide-react'
+import { useCallback } from 'react'
 
 export function Models({
   projectName,
@@ -18,34 +21,52 @@ export function Models({
 }): React.JSX.Element {
   const { data: models = [], error: fetchError } = useModels(projectName)
   const { data: catalog = [] } = useAvailableModels()
-  const mutation = useUpdateModel(projectName)
+  const { data: availableSkills = [] } = useSkills()
+  const modelMutation = useUpdateModel(projectName)
+  const skillsMutation = useUpdateAgentSkills(projectName)
 
-  /** Auto-save on combobox selection. */
-  const handleSave = useCallback(
+  const handleSaveModel = useCallback(
     async (agent: string, model: string) => {
       if (!model) return
       try {
-        await mutation.mutateAsync({ agent, model })
+        await modelMutation.mutateAsync({ agent, model })
       } catch {
         /* mutation state has error */
       }
     },
-    [mutation],
+    [modelMutation],
   )
 
-  /** True when configured model is absent from connected catalog. */
+  const handleToggleSkill = useCallback(
+    async (agent: string, currentSkills: string[], slug: string, enabled: boolean) => {
+      const next = enabled
+        ? [...currentSkills, slug]
+        : currentSkills.filter((s) => s !== slug)
+      try {
+        await skillsMutation.mutateAsync({ agent, skills: next })
+      } catch {
+        /* mutation state has error */
+      }
+    },
+    [skillsMutation],
+  )
+
   const isInvalid = (value: string) =>
     catalog.length > 0 && !!value && !catalog.find((c) => c.full_id === value)
 
   const values: Record<string, string> = {}
-  for (const m of models) values[m.agent] = m.model
+  const agentSkills: Record<string, string[]> = {}
+  for (const m of models) {
+    values[m.agent] = m.model
+    agentSkills[m.agent] = m.skills ?? []
+  }
 
   const buildAgents = models.filter((m) => ['build', 'fix'].includes(m.agent))
   const supportAgents = models.filter((m) =>
     ['architect', 'milestone'].includes(m.agent),
   )
 
-  const error = fetchError ?? mutation.error
+  const error = fetchError ?? modelMutation.error ?? skillsMutation.error
 
   return (
     <div className="space-y-4">
@@ -60,9 +81,13 @@ export function Models({
         description="Core agents that write and fix code"
         agents={buildAgents}
         values={values}
-        saving={mutation.isPending ? mutation.variables?.agent : undefined}
+        agentSkills={agentSkills}
+        availableSkills={availableSkills}
+        savingModel={modelMutation.isPending ? modelMutation.variables?.agent : undefined}
+        savingSkills={skillsMutation.isPending ? skillsMutation.variables?.agent : undefined}
         isInvalid={isInvalid}
-        onSave={handleSave}
+        onSaveModel={handleSaveModel}
+        onToggleSkill={handleToggleSkill}
         catalog={catalog}
       />
 
@@ -71,9 +96,13 @@ export function Models({
         description="Architecture (also used by the create roadmap tool) and milestone agents"
         agents={supportAgents}
         values={values}
-        saving={mutation.isPending ? mutation.variables?.agent : undefined}
+        agentSkills={agentSkills}
+        availableSkills={availableSkills}
+        savingModel={modelMutation.isPending ? modelMutation.variables?.agent : undefined}
+        savingSkills={skillsMutation.isPending ? skillsMutation.variables?.agent : undefined}
         isInvalid={isInvalid}
-        onSave={handleSave}
+        onSaveModel={handleSaveModel}
+        onToggleSkill={handleToggleSkill}
         catalog={catalog}
       />
 
@@ -88,9 +117,9 @@ export function Models({
             <code className="bg-muted px-1 rounded">
               github-copilot/claude-sonnet-4-5
             </code>
-            ). Selections are saved immediately. Models shown in{' '}
-            <span className="text-destructive">red</span> are not available
-            through your connected providers.
+            ). Skills are loaded from the workspace{' '}
+            <code className="bg-muted px-1 rounded">skills/</code> directory
+            and injected into agent prompts when enabled.
           </p>
         </CardContent>
       </Card>
@@ -105,18 +134,26 @@ function AgentGroup({
   description,
   agents,
   values,
-  saving,
+  agentSkills,
+  availableSkills,
+  savingModel,
+  savingSkills,
   isInvalid,
-  onSave,
+  onSaveModel,
+  onToggleSkill,
   catalog,
 }: {
   title: string
   description: string
   agents: ModelConfig[]
   values: Record<string, string>
-  saving?: string
+  agentSkills: Record<string, string[]>
+  availableSkills: SkillInfo[]
+  savingModel?: string
+  savingSkills?: string
   isInvalid: (value: string) => boolean
-  onSave: (agent: string, model: string) => void
+  onSaveModel: (agent: string, model: string) => void
+  onToggleSkill: (agent: string, current: string[], slug: string, enabled: boolean) => void
   catalog: AvailableModel[]
 }): React.JSX.Element | null {
   if (agents.length === 0) return null
@@ -134,6 +171,7 @@ function AgentGroup({
         {agents.map((m, i) => {
           const val = values[m.agent] || ''
           const invalid = isInvalid(val)
+          const skills = agentSkills[m.agent] ?? []
           return (
             <div key={m.agent}>
               {i > 0 && <Separator className="my-3" />}
@@ -148,12 +186,12 @@ function AgentGroup({
                 </div>
                 <ModelCombobox
                   value={val}
-                  onChange={(newVal) => onSave(m.agent, newVal)}
+                  onChange={(newVal) => onSaveModel(m.agent, newVal)}
                   models={catalog}
                   invalid={invalid}
                   className="flex-1"
                 />
-                {saving === m.agent ? (
+                {savingModel === m.agent ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
                 ) : invalid ? (
                   <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
@@ -161,6 +199,37 @@ function AgentGroup({
                   <div className="w-3.5 shrink-0" />
                 )}
               </div>
+              {availableSkills.length > 0 && (
+                <div className="mt-2 ml-27 space-y-1.5">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" />
+                    Skills
+                    {savingSkills === m.agent && (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    )}
+                  </p>
+                  {availableSkills.map((sk) => (
+                    <label
+                      key={sk.slug}
+                      className="flex items-center gap-2 text-xs cursor-pointer"
+                    >
+                      <Switch
+                        size="sm"
+                        checked={skills.includes(sk.slug)}
+                        onCheckedChange={(checked: boolean) =>
+                          onToggleSkill(m.agent, skills, sk.slug, checked)
+                        }
+                      />
+                      <span className="font-mono">{sk.name}</span>
+                      {sk.description && (
+                        <span className="text-muted-foreground truncate">
+                          — {sk.description}
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}

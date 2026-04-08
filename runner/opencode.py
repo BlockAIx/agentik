@@ -542,6 +542,12 @@ def run_opencode_build(
 
     dep_notes_block = collect_dependency_notes(task, project_dir)
 
+    # Skills assigned to this agent.
+    from runner.skills import collect_skill_blocks  # noqa: PLC0415
+
+    effective_agent_name = "build" if fix_logs is None else "fix"
+    skills_block = collect_skill_blocks(effective_agent_name, project_dir)
+
     # Dockerfile rules — only injected when the project actually has a Dockerfile.
     has_dockerfile = (project_dir / "Dockerfile").exists()
     dockerfile_rules = (
@@ -593,6 +599,7 @@ def run_opencode_build(
             DOCKERFILE_RULES=dockerfile_rules,
             DEPLOY_RULES=deploy_rules,
             DEP_NOTES=dep_notes_block,
+            SKILLS=skills_block,
         )
     else:
         truncated_logs = fix_logs[-3000:] if len(fix_logs) > 3000 else fix_logs

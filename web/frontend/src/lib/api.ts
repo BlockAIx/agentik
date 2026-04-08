@@ -80,6 +80,14 @@ export interface ModelConfig {
   agent: string
   model: string
   max_steps: number
+  skills: string[]
+}
+
+export interface SkillInfo {
+  slug: string
+  name: string
+  description: string
+  agents: string[]
 }
 
 export interface BudgetConfig {
@@ -255,6 +263,21 @@ export const api = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model }),
+    }),
+
+  /* ── Skills ── */
+
+  getAvailableSkills: (signal?: AbortSignal) =>
+    fetchJson<SkillInfo[]>('/api/skills', { signal }),
+
+  getAgentSkills: (name: string, agent: string, signal?: AbortSignal) =>
+    fetchJson<string[]>(`/api/projects/${name}/skills/${agent}`, { signal }),
+
+  updateAgentSkills: (name: string, agent: string, skills: string[]) =>
+    fetchJson<{ saved: boolean }>(`/api/projects/${name}/skills/${agent}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ skills }),
     }),
 
   /* ── Providers ── */
