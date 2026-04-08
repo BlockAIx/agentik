@@ -207,10 +207,11 @@ export const api = {
     }),
 
   getPipelineStatus: (signal?: AbortSignal) =>
-    fetchJson<{ running: boolean; project: string | null }>(
-      '/api/pipeline/status',
-      { signal },
-    ),
+    fetchJson<{
+      running: boolean
+      project: string | null
+      projects: string[]
+    }>('/api/pipeline/status', { signal }),
 
   stopPipeline: (name: string) =>
     fetchJson<{ stopped: boolean }>(`/api/projects/${name}/stop`, {

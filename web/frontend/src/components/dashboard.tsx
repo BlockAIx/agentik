@@ -31,6 +31,7 @@ export function Dashboard(): React.JSX.Element {
   const { data: pipeStatus } = usePipelineStatus()
   const invalidate = useInvalidateProject()
   const pipelineProject = pipeStatus?.running ? pipeStatus.project : null
+  const runningProjects = pipeStatus?.projects ?? []
 
   /* WS-driven invalidation */
   useEffect(() => {
@@ -97,7 +98,13 @@ export function Dashboard(): React.JSX.Element {
           />
           <KpiCard
             title="Pipeline"
-            value={pipelineProject ? 'Running' : 'Idle'}
+            value={
+              runningProjects.length > 1
+                ? `${runningProjects.length} Running`
+                : pipelineProject
+                  ? 'Running'
+                  : 'Idle'
+            }
             icon={
               pipelineProject ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -105,7 +112,11 @@ export function Dashboard(): React.JSX.Element {
                 <Activity className="h-4 w-4" />
               )
             }
-            detail={pipelineProject ?? 'No active pipeline'}
+            detail={
+              runningProjects.length > 1
+                ? runningProjects.join(', ')
+                : (pipelineProject ?? 'No active pipeline')
+            }
             variant={pipelineProject ? 'active' : 'default'}
           />
         </div>

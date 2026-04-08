@@ -64,7 +64,7 @@ export function ProjectView(): React.JSX.Element {
 
   const { data: pipeStatus } = usePipelineStatus()
   const pipelineActive = !!(
-    pipeStatus?.running && pipeStatus.project === projectName
+    pipeStatus?.projects?.includes(projectName)
   )
 
   const { data: detail, isLoading } = useProject(projectName, pipelineActive)

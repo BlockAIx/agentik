@@ -37,7 +37,8 @@ export function Controls({
   const logContainerRef = useRef<HTMLDivElement>(null)
 
   const { data: pipeStatus } = usePipelineStatus()
-  const pipelineActive = pipeStatus?.running ?? false
+  const pipelineActive =
+    pipeStatus?.projects?.includes(projectName) ?? false
   const statusChecked = pipeStatus !== undefined
 
   const runMutation = useRunPipeline()

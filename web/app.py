@@ -50,10 +50,8 @@ _ANSI_RE = re.compile(r"\x1b\[[0-9;]*[mGKHF]")
 # WebSocket connections for live updates.
 _ws_clients: list[WebSocket] = []
 _pipeline_lock = threading.Lock()
-_pipeline_running = False
-_pipeline_project: str | None = None
-_pipeline_thread: threading.Thread | None = None
-_pipeline_process: "subprocess.Popen[bytes] | None" = None
+# Per-project pipeline tracking: {project_name: subprocess.Popen}.
+_pipelines: dict[str, "subprocess.Popen[bytes]"] = {}
 # The main event loop captured at startup — used by background threads to
 # safely schedule coroutines via asyncio.run_coroutine_threadsafe.
 _main_loop: asyncio.AbstractEventLoop | None = None
@@ -270,12 +268,12 @@ def get_project(name: str) -> dict:
             # mid-task, which would otherwise show a stale "Running" banner.
             "current_task": (
                 state.get("current_task")
-                if _pipeline_running and _pipeline_project == name
+                if name in _pipelines
                 else None
             ),
             "running_tasks": (
                 state.get("running_tasks", [])
-                if _pipeline_running and _pipeline_project == name
+                if name in _pipelines
                 else []
             ),
             "attempt": state.get("attempt", 0),
@@ -408,10 +406,9 @@ async def update_project_budget(name: str, request: Request) -> dict:
 @app.post("/api/projects/{name}/run")
 async def run_pipeline(name: str, request: Request) -> dict:
     """Start the pipeline for a project as a subprocess and stream logs over WebSocket."""
-    global _pipeline_running, _pipeline_project, _pipeline_thread
-
-    if _pipeline_running:
-        raise HTTPException(409, "Pipeline already running")
+    with _pipeline_lock:
+        if name in _pipelines:
+            raise HTTPException(409, f"Pipeline already running for '{name}'")
 
     project_dir = PROJECTS_ROOT / name
     if not project_dir.exists():
@@ -425,11 +422,8 @@ async def run_pipeline(name: str, request: Request) -> dict:
     verbose = bool(body.get("verbose", False))
 
     def _run() -> None:
-        global _pipeline_running, _pipeline_project, _pipeline_process
         rc = -1
         try:
-            _pipeline_running = True
-            _pipeline_project = name
             broadcast_sync("pipeline_started", {"project": name})
             env = {**os.environ, "PYTHONUNBUFFERED": "1"}
             if verbose:
@@ -447,12 +441,9 @@ async def run_pipeline(name: str, request: Request) -> dict:
                 env=env,
                 start_new_session=True,
             ) as proc:
-                _pipeline_process = proc
+                with _pipeline_lock:
+                    _pipelines[name] = proc
                 assert proc.stdout is not None
-                # Wrap binary stdout with TextIOWrapper so we can use newline=""
-                # which preserves raw \r vs \n terminators. This lets us detect
-                # spinner redraws (\r-only lines) and skip them instead of
-                # rendering each animation frame as a separate log entry.
                 text_stdout = io.TextIOWrapper(
                     proc.stdout, encoding="utf-8", errors="replace", newline=""
                 )
@@ -467,42 +458,44 @@ async def run_pipeline(name: str, request: Request) -> dict:
         except Exception as exc:  # noqa: BLE001
             broadcast_sync("log_line", {"project": name, "line": f"[ERROR] {exc}"})
         finally:
-            _pipeline_running = False
-            _pipeline_project = None
-            _pipeline_process = None
+            with _pipeline_lock:
+                _pipelines.pop(name, None)
             broadcast_sync("pipeline_stopped", {"project": name, "rc": rc})
 
-    _pipeline_thread = threading.Thread(target=_run, daemon=True)
-    _pipeline_thread.start()
+    threading.Thread(target=_run, daemon=True).start()
     return {"started": True}
 
 
 @app.post("/api/projects/{name}/stop")
 def stop_pipeline(name: str) -> dict:
     """Terminate the running pipeline subprocess and all its children."""
-    global _pipeline_running, _pipeline_project, _pipeline_process
-    _pipeline_running = False
-    _pipeline_project = None
-    if _pipeline_process is not None:
-        proc = _pipeline_process
+    with _pipeline_lock:
+        proc = _pipelines.pop(name, None)
+    if proc is not None:
         try:
             if platform.system() != "Windows":
-                # Kill the entire process group so opencode grandchildren die too.
                 pgid = os.getpgid(proc.pid)  # type: ignore[attr-defined]
                 os.killpg(pgid, signal.SIGTERM)  # type: ignore[attr-defined]
             else:
                 proc.terminate()
         except ProcessLookupError:
-            pass  # Already gone.
+            pass
         except Exception:  # noqa: BLE001
-            proc.terminate()  # Fallback.
+            proc.terminate()
     return {"stopped": True}
 
 
 @app.get("/api/pipeline/status")
 def pipeline_status() -> dict:
-    """Return whether a pipeline is currently running."""
-    return {"running": _pipeline_running, "project": _pipeline_project}
+    """Return running pipelines. Backward-compatible: ``running`` and ``project``
+    reflect the first entry; ``projects`` lists all running project names."""
+    with _pipeline_lock:
+        names = list(_pipelines.keys())
+    return {
+        "running": len(names) > 0,
+        "project": names[0] if names else None,
+        "projects": names,
+    }
 
 
 @app.post("/api/projects/{name}/generate-roadmap")
