@@ -72,6 +72,15 @@ export function ProjectView(): React.JSX.Element {
   const { data: projectModels = [] } = useModels(projectName)
   const invalidate = useInvalidateProject()
 
+  const hasRoadmap = (detail?.tasks.length ?? 0) > 0
+
+  /* Auto-redirect to generator tab when project has no roadmap */
+  useEffect(() => {
+    if (!isLoading && detail && !hasRoadmap && activeTab !== 'generator' && activeTab !== 'models') {
+      navigate(`/project/${projectName}/generator`, { replace: true })
+    }
+  }, [isLoading, detail, hasRoadmap, activeTab, navigate, projectName])
+
   /* WS-driven invalidation */
   useEffect(() => {
     return useWsStore.getState().subscribe(() => {
@@ -119,40 +128,53 @@ export function ProjectView(): React.JSX.Element {
           onValueChange={onTabChange}
           className="space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-8">
-            <TabsTrigger value="overview" className="gap-1 text-xs">
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="graph" className="gap-1 text-xs">
-              <GitBranch className="h-3.5 w-3.5" />
-              Graph
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-1 text-xs">
-              <ListChecks className="h-3.5 w-3.5" />
-              Tasks
-            </TabsTrigger>
-            <TabsTrigger value="logs" className="gap-1 text-xs">
-              <FileText className="h-3.5 w-3.5" />
-              Logs
-            </TabsTrigger>
-            <TabsTrigger value="editor" className="gap-1 text-xs">
-              <FileCode2 className="h-3.5 w-3.5" />
-              Editor
-            </TabsTrigger>
-            <TabsTrigger value="generator" className="gap-1 text-xs">
-              <Sparkles className="h-3.5 w-3.5" />
-              Generate
-            </TabsTrigger>
-            <TabsTrigger value="models" className="gap-1 text-xs">
-              <Cpu className="h-3.5 w-3.5" />
-              Models
-            </TabsTrigger>
-            <TabsTrigger value="controls" className="gap-1 text-xs">
-              <Settings2 className="h-3.5 w-3.5" />
-              Controls
-            </TabsTrigger>
-          </TabsList>
+          {hasRoadmap ? (
+            <TabsList className="grid w-full grid-cols-8">
+              <TabsTrigger value="overview" className="gap-1 text-xs">
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="graph" className="gap-1 text-xs">
+                <GitBranch className="h-3.5 w-3.5" />
+                Graph
+              </TabsTrigger>
+              <TabsTrigger value="tasks" className="gap-1 text-xs">
+                <ListChecks className="h-3.5 w-3.5" />
+                Tasks
+              </TabsTrigger>
+              <TabsTrigger value="logs" className="gap-1 text-xs">
+                <FileText className="h-3.5 w-3.5" />
+                Logs
+              </TabsTrigger>
+              <TabsTrigger value="editor" className="gap-1 text-xs">
+                <FileCode2 className="h-3.5 w-3.5" />
+                Editor
+              </TabsTrigger>
+              <TabsTrigger value="generator" className="gap-1 text-xs">
+                <Sparkles className="h-3.5 w-3.5" />
+                Generate
+              </TabsTrigger>
+              <TabsTrigger value="models" className="gap-1 text-xs">
+                <Cpu className="h-3.5 w-3.5" />
+                Models
+              </TabsTrigger>
+              <TabsTrigger value="controls" className="gap-1 text-xs">
+                <Settings2 className="h-3.5 w-3.5" />
+                Controls
+              </TabsTrigger>
+            </TabsList>
+          ) : (
+            <TabsList className="grid w-full grid-cols-2 max-w-sm">
+              <TabsTrigger value="generator" className="gap-1 text-xs">
+                <Sparkles className="h-3.5 w-3.5" />
+                Generate
+              </TabsTrigger>
+              <TabsTrigger value="models" className="gap-1 text-xs">
+                <Cpu className="h-3.5 w-3.5" />
+                Models
+              </TabsTrigger>
+            </TabsList>
+          )}
 
           <TabsContent value="overview">
             <Overview project={detail} invalidModels={invalidModels} />
