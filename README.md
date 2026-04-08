@@ -41,6 +41,16 @@ builds, and resume support built in.
   last error, failing test, attempt count, and token spend
 - **Interactive HTML dependency graph** — open a standalone graph in your
   browser with colour-coded status and token budgets
+- **Skills** — inject custom knowledge (design systems, coding standards,
+  domain rules) into agent prompts; managed via CLI or web UI per agent
+- **Per-project concurrency** — each project can set its own
+  `max_parallel_agents` override, independent of the global budget
+- **Inter-task shared context** — tasks can publish key-value context that
+  downstream tasks read, enabling cross-task data flow without file coupling
+- **Structured pipeline tracing** — every phase emits structured trace events
+  (timing, tokens, outcome) for observability and debugging
+- **Smart fix routing** — parallel-batch failures are routed to targeted
+  per-task fix sessions instead of a single monolithic fix pass
 - **Web UI dashboard** — React + Tailwind + shadcn frontend with live
   WebSocket updates, 9 tabs (Overview, Graph, Tasks, Logs, Editor, Budget,
   Generate, Models, Controls), Monaco JSON editor, React Flow
@@ -202,7 +212,8 @@ agentik/
 │   ├── graph_html.py        #   interactive HTML dependency graph
 │   ├── notify.py            #   webhook notification support
 │   ├── plan.py              #   ROADMAP generation from NL descriptions
-│   └── rollback.py          #   git rollback on task failure
+│   ├── rollback.py          #   git rollback on task failure
+│   └── skills.py            #   skill discovery, loading, and prompt injection
 ├── web/                     # web UI dashboard
 │   ├── app.py               #   FastAPI backend + REST API
 │   └── frontend/            #   React + Tailwind + shadcn SPA
@@ -219,6 +230,10 @@ agentik/
 │   ├── static_fix.md
 │   ├── milestone.md
 │   └── milestone_fix.md
+├── skills/                  # agent skill packs (local, gitignored except example)
+│   └── example-skill/       #   bundled example skill
+│       ├── SKILL.md         #     skill instructions (injected into prompts)
+│       └── skill.json       #     metadata (name, description, default agents)
 ├── AGENTS.md                # agent instructions for this workspace
 ├── LICENSE                  # MIT license
 ├── budget.json              # global limits and token price table
@@ -489,6 +504,82 @@ automatically hard-resets the feature branch to the last clean commit. This
 prevents broken code from accumulating on feature branches. Rollback only
 applies when `"git": {"enabled": true}` is set.
 
+## Skills
+
+Skills inject domain knowledge — design systems, coding standards, review
+checklists — into agent prompts. Each skill is a directory under `skills/`
+containing a `SKILL.md` file and an optional `skill.json` metadata file.
+
+### Skill structure
+
+```
+skills/
+  <skill-slug>/
+    SKILL.md          # instructions injected into the agent prompt
+    skill.json        # optional metadata: name, description, default agents
+    scripts/          # optional runtime scripts the agent can invoke
+    data/             # optional data files (CSV databases, etc.)
+```
+
+### Installing a skill
+
+Copy or clone the skill into `skills/<slug>/`. The only requirement is a
+`SKILL.md` file. Example:
+
+```bash
+# Clone a third-party skill
+git clone https://github.com/example/my-skill.git skills/my-skill
+
+# Or create one manually
+mkdir skills/my-skill
+echo "# My Skill\nAlways use semantic HTML." > skills/my-skill/SKILL.md
+```
+
+Optional `skill.json`:
+
+```json
+{
+  "name": "My Skill",
+  "description": "Enforces semantic HTML in all components.",
+  "agents": ["build", "architect"]
+}
+```
+
+Skills are **local by default** — the `.gitignore` excludes `skills/*/` except
+the bundled `example-skill/`. Install skills per-machine or per-environment.
+
+### Assigning skills to agents
+
+Skills are assigned per-project per-agent. Configure via:
+
+- **Web UI** — Models tab → toggle skills on/off per agent
+- **CLI** — select "🧩 Manage skills" from the pipeline menu
+- **Directly** — edit `projects/<name>/opencode.jsonc`:
+
+```json
+{
+  "agent": {
+    "build": { "skills": ["my-skill"] },
+    "architect": { "skills": ["my-skill", "another-skill"] }
+  }
+}
+```
+
+### How skills work at runtime
+
+When a build or fix agent runs, `collect_skill_blocks()` reads the assigned
+skills for that agent, loads each `SKILL.md`, rewrites self-referencing paths
+(e.g. `skills/<slug>/scripts/` → absolute paths so agents in project
+directories can find runtime files), and injects the content into the prompt
+via the `{{SKILLS}}` template variable.
+
+### Path rewriting
+
+Skills that ship runtime files (scripts, data) can reference them as
+`skills/<slug>/path` in their `SKILL.md`. At prompt injection time, these
+paths are rewritten to absolute paths so agents working inside
+`projects/<name>/` can locate and execute them.
+
 ## Docker setup
 
 agentik ships with a `Dockerfile` and `docker-compose.yml` that bundle the
@@ -545,6 +636,7 @@ The compose file mounts:
 - `./projects` → `/app/projects` — your project data persists on the host
 - `./opencode.jsonc` → `/app/opencode.jsonc` — edit models without rebuilding
 - `./budget.json` → `/app/budget.json` — adjust budgets without rebuilding
+- `./skills` → `/app/skills` (read-only) — agent skill packs
 - `pnpm_store` → `/pnpm-store` — pnpm content-addressable store (named volume, persists across rebuilds)
 - `pnpm_vstore` → `/pnpm-vstore` — pnpm virtual stores per project (named volume)
 

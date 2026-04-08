@@ -19,4 +19,8 @@ projects/
 web/static/
 web/frontend/node_modules/
 
+# Skills — only track the bundled example; user-installed skills are local.
+skills/*/
+!skills/example-skill/
+
 .vscode/
