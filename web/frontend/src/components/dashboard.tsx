@@ -1,15 +1,3 @@
-import {
-  Activity,
-  ArrowRight,
-  Coins,
-  FolderOpen,
-  Layers,
-  Loader2,
-  Play,
-  Zap,
-} from 'lucide-react'
-import { useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,6 +11,18 @@ import {
 import type { ProjectSummary } from '@/lib/api'
 import { fmt } from '@/lib/format'
 import { useWsStore } from '@/stores/ws-store'
+import {
+  Activity,
+  ArrowRight,
+  Coins,
+  FolderOpen,
+  Layers,
+  Loader2,
+  Play,
+  Zap,
+} from 'lucide-react'
+import { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 export function Dashboard(): React.JSX.Element {
   const navigate = useNavigate()

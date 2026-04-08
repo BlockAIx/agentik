@@ -149,7 +149,13 @@ async def create_project(request: Request) -> dict:
         json.dumps(roadmap, indent=2), encoding="utf-8"
     )
 
-    # Init git repo if requested.
+    # Scaffold project dirs, opencode config, budget, git, and AGENTS.md.
+    from runner.workspace import ensure_workspace_dirs  # noqa: PLC0415
+
+    ensure_workspace_dirs(project_dir)
+
+    # Init git repo if requested (ensure_workspace_dirs handles its own git
+    # setup, but the user may have opted in here explicitly).
     if git_enabled:
         subprocess.run(
             ["git", "init"],
@@ -522,6 +528,14 @@ async def generate_roadmap_api(name: str, request: Request) -> dict:
 
     if not description:
         raise HTTPException(400, "Description is required")
+
+    # Ensure opencode.jsonc exists in the project so the architect agent is
+    # discoverable when opencode runs with --dir pointing at the project.
+    project_dir = PROJECTS_ROOT / name
+    if project_dir.exists():
+        from runner.workspace import _sync_opencode_config  # noqa: PLC0415
+
+        _sync_opencode_config(project_dir)
 
     from runner.plan import _call_architect  # noqa: PLC0415
 

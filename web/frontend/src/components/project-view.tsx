@@ -1,15 +1,3 @@
-import {
-  Cpu,
-  FileCode2,
-  FileText,
-  GitBranch,
-  LayoutDashboard,
-  ListChecks,
-  Settings2,
-  Sparkles,
-} from 'lucide-react'
-import { useCallback, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 import { Controls } from '@/components/controls'
 import { Generator } from '@/components/generator'
 import { Graph } from '@/components/graph'
@@ -30,6 +18,18 @@ import {
   useProject,
 } from '@/hooks/use-queries'
 import { useWsStore } from '@/stores/ws-store'
+import {
+  Cpu,
+  FileCode2,
+  FileText,
+  GitBranch,
+  LayoutDashboard,
+  ListChecks,
+  Settings2,
+  Sparkles,
+} from 'lucide-react'
+import { useCallback, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 
 const VALID_TABS = [
   'overview',
@@ -82,8 +82,8 @@ export function ProjectView(): React.JSX.Element {
   const invalidModels =
     availableModels.length > 0
       ? projectModels.filter(
-          (m) => !availableModels.find((a) => a.full_id === m.model),
-        )
+        (m) => !availableModels.find((a) => a.full_id === m.model),
+      )
       : []
 
   return (

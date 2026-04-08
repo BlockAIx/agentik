@@ -1,12 +1,3 @@
-import {
-  AlertTriangle,
-  Loader2,
-  Play,
-  RefreshCw,
-  Square,
-  Trash2,
-} from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,6 +10,15 @@ import {
 } from '@/hooks/use-queries'
 import type { ProjectDetail } from '@/lib/api'
 import { useWsStore } from '@/stores/ws-store'
+import {
+  AlertTriangle,
+  Loader2,
+  Play,
+  RefreshCw,
+  Square,
+  Trash2,
+} from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const MAX_LOG_LINES = 2000
 
@@ -46,7 +46,7 @@ export function Controls({
   const invalidate = useInvalidateProject()
 
   const handleWs = useCallback(
-    (msg: { event: string; [k: string]: unknown }) => {
+    (msg: { event: string;[k: string]: unknown }) => {
       if (msg.event === 'pipeline_started' && msg.project === projectName) {
         setLogs([])
       } else if (

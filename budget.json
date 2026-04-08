@@ -1,7 +1,7 @@
 {
   "monthly_limit_tokens": 2000000000,
   "per_task_limit_tokens": 2000000,
-  "max_attempts_per_task": 4,
+  "max_attempts_per_task": 2,
   "max_parallel_agents": 3,
   "token_prices_usd_per_million": {
     "input": 1.25,
