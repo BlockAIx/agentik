@@ -1,0 +1,5 @@
+{
+  "name": "UI/UX Pro Max",
+  "description": "Design intelligence for web and mobile. 50+ styles, 161 color palettes, 57 font pairings, 161 product types, 99 UX guidelines, and 25 chart types across 10 stacks. Includes searchable CSV databases and a Python CLI tool for design system generation.",
+  "agents": ["build", "architect"]
+}

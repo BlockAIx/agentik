@@ -84,8 +84,8 @@ COPY prompts/ prompts/
 COPY tests/ tests/
 COPY AGENTS.md README.md ROADMAP_EXAMPLE.md LICENSE ./
 
-# Create projects mount point.
-RUN mkdir -p projects
+# Create projects and skills mount points.
+RUN mkdir -p projects skills
 
 # ── Pre-build the web frontend ─────────────────────────────────────────────────
 # Vite outputs directly to ../static (= /app/web/static/) via outDir config.

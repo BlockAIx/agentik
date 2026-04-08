@@ -11,6 +11,7 @@ services:
       - "5173:5173"  # Vite HMR
     volumes:
       - ./projects:/app/projects
+      - ./skills:/app/skills:ro
       - ./budget.json:/app/budget.json
 
       # Source mounts for hot-reloading

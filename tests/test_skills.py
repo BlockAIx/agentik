@@ -150,3 +150,21 @@ class TestCollectSkillBlocks:
         block = collect_skill_blocks("build", project)
         assert "Do alpha things" in block
         assert "Do beta things" in block
+
+    def test_rewrites_skill_paths(self, skills_dir: Path, tmp_path: Path) -> None:
+        """Self-referencing paths like skills/<slug>/ are rewritten to absolute."""
+        from runner.skills import collect_skill_blocks, save_agent_skills
+
+        gamma = skills_dir / "gamma"
+        gamma.mkdir()
+        (gamma / "SKILL.md").write_text(
+            "Run `python3 skills/gamma/scripts/search.py`", encoding="utf-8"
+        )
+        project = tmp_path / "proj"
+        project.mkdir()
+        save_agent_skills("build", project, ["gamma"])
+
+        block = collect_skill_blocks("build", project)
+        resolved = str(gamma.resolve())
+        assert resolved in block
+        assert "skills/gamma/" not in block

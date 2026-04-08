@@ -77,7 +77,14 @@ def collect_skill_blocks(agent: str, project_dir: Path) -> str:
     for slug in slugs:
         content = get_skill_content(slug)
         if content:
-            parts.append(f"### Skill: {slug}\n\n{content.strip()}")
+            skill_dir = (_SKILLS_DIR / slug).resolve()
+            # Rewrite self-referencing paths so agents in project dirs can
+            # find runtime files (scripts, data) shipped with the skill.
+            content = content.replace(f"skills/{slug}/", str(skill_dir) + "/")
+            preamble = f"> **Skill directory:** `{skill_dir}`\n\n"
+            parts.append(
+                f"### Skill: {slug}\n\n{preamble}{content.strip()}"
+            )
         else:
             _console.print(f"[yellow]⚠ Skill '{slug}' not found — skipping[/]")
 

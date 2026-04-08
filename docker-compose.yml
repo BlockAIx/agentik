@@ -8,6 +8,7 @@ services:
       - "${AGENTIK_PORT:-8420}:8420"
     volumes:
       - ./projects:/app/projects
+      - ./skills:/app/skills:ro
       - ./opencode.jsonc:/app/opencode.jsonc:ro
       - ./budget.json:/app/budget.json
       # Named volumes for pnpm — keeps content store and virtual stores off
