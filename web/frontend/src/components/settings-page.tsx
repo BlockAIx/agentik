@@ -1,8 +1,9 @@
 /** Global settings page — provider auth, budget limits, token prices. */
-import { Layout } from "@/components/layout"
-import { Providers } from "@/components/providers"
-import { GlobalConfig } from "@/components/settings"
-import { Settings2 } from "lucide-react"
+
+import { Settings2 } from 'lucide-react'
+import { Layout } from '@/components/layout'
+import { Providers } from '@/components/providers'
+import { GlobalConfig } from '@/components/settings'
 
 export function SettingsPage(): React.JSX.Element {
   return (

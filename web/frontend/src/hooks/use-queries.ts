@@ -1,27 +1,24 @@
 /** TanStack Query hooks — all data fetching and mutations. */
-import type { BudgetConfig } from "@/lib/api"
-import { api } from "@/lib/api"
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { BudgetConfig } from '@/lib/api'
+import { api } from '@/lib/api'
 
 /* ── Query Keys ── */
 
 const keys = {
-  projects: ["projects"] as const,
-  project: (name: string) => ["project", name] as const,
-  globalBudget: ["globalBudget"] as const,
-  pipelineStatus: ["pipelineStatus"] as const,
-  logs: (name: string) => ["logs", name] as const,
+  projects: ['projects'] as const,
+  project: (name: string) => ['project', name] as const,
+  globalBudget: ['globalBudget'] as const,
+  pipelineStatus: ['pipelineStatus'] as const,
+  logs: (name: string) => ['logs', name] as const,
   logContent: (name: string, slug: string, log: string) =>
-    ["logContent", name, slug, log] as const,
-  models: (name: string) => ["models", name] as const,
-  availableModels: ["availableModels"] as const,
-  providers: ["providers"] as const,
-  budgetConfig: ["budgetConfig"] as const,
-  roadmap: (name: string) => ["roadmap", name] as const,
+    ['logContent', name, slug, log] as const,
+  models: (name: string) => ['models', name] as const,
+  availableModels: ['availableModels'] as const,
+  providers: ['providers'] as const,
+  budgetConfig: ['budgetConfig'] as const,
+  roadmap: (name: string) => ['roadmap', name] as const,
 }
 
 /* ── Queries ── */
@@ -38,7 +35,7 @@ export function useProject(name: string, pipelineActive?: boolean) {
     queryKey: keys.project(name),
     queryFn: ({ signal }) => api.getProject(name, signal),
     enabled: !!name,
-    refetchOnMount: "always",
+    refetchOnMount: 'always',
     // Poll every 3 s while the pipeline is running so the overview banner,
     // progress bar and task statuses stay current even between WS log events.
     refetchInterval: pipelineActive ? 3_000 : false,
@@ -68,11 +65,7 @@ export function useLogs(name: string) {
   })
 }
 
-export function useLogContent(
-  name: string,
-  slug: string,
-  logName: string,
-) {
+export function useLogContent(name: string, slug: string, logName: string) {
   return useQuery({
     queryKey: keys.logContent(name, slug, logName),
     queryFn: ({ signal }) => api.getLogContent(name, slug, logName, signal),
@@ -122,8 +115,12 @@ export function useRoadmap(name: string) {
 export function useCreateProject() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (v: { name: string; ecosystem: string; preamble: string; git: boolean }) =>
-      api.createProject(v.name, v.ecosystem, v.preamble, v.git),
+    mutationFn: (v: {
+      name: string
+      ecosystem: string
+      preamble: string
+      git: boolean
+    }) => api.createProject(v.name, v.ecosystem, v.preamble, v.git),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.projects })
     },

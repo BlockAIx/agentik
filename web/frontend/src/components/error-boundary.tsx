@@ -1,4 +1,4 @@
-import { Component } from "react"
+import { Component } from 'react'
 
 interface Props {
   children: React.ReactNode
@@ -11,7 +11,7 @@ interface State {
 /** Return true when the error is a stale-chunk dynamic-import failure. */
 function isChunkLoadError(error: Error): boolean {
   return (
-    error.name === "TypeError" &&
+    error.name === 'TypeError' &&
     /failed to fetch dynamically imported module|loading chunk|loading css chunk/i.test(
       error.message,
     )
@@ -29,9 +29,9 @@ export class ErrorBoundary extends Component<Props, State> {
     // Stale build chunk — reload once to pick up the new index.html.
     // Side-effects belong in componentDidCatch, not getDerivedStateFromError.
     if (isChunkLoadError(error)) {
-      const key = "chunk-reload"
+      const key = 'chunk-reload'
       if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, "1")
+        sessionStorage.setItem(key, '1')
         window.location.reload()
       } else {
         sessionStorage.removeItem(key)

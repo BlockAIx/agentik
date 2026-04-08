@@ -1,17 +1,3 @@
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Tile } from "@/components/ui/tile"
-import type { ProjectDetail } from "@/lib/api"
-import { fmt, fmtDate } from "@/lib/format"
 import {
   Activity,
   AlertTriangle,
@@ -20,50 +6,65 @@ import {
   Flag,
   Layers,
   Zap,
-} from "lucide-react"
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tile } from '@/components/ui/tile'
+import type { ProjectDetail } from '@/lib/api'
+import { fmt, fmtDate } from '@/lib/format'
 
 interface OverviewProps {
-  project: ProjectDetail;
-  invalidModels?: Array<{ agent: string; model: string }>;
+  project: ProjectDetail
+  invalidModels?: Array<{ agent: string; model: string }>
 }
 
 export function Overview({ project, invalidModels }: OverviewProps) {
-  const { state, tasks } = project;
-  const done = tasks.filter((t) => t.status === "done").length;
-  const ready = tasks.filter((t) => t.status === "ready").length;
-  const blocked = tasks.filter((t) => t.status === "blocked").length;
-  const pct = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
+  const { state, tasks } = project
+  const done = tasks.filter((t) => t.status === 'done').length
+  const ready = tasks.filter((t) => t.status === 'ready').length
+  const blocked = tasks.filter((t) => t.status === 'blocked').length
+  const pct = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0
 
-  const donePct = tasks.length > 0 ? (done / tasks.length) * 100 : 0;
-  const readyPct = tasks.length > 0 ? (ready / tasks.length) * 100 : 0;
+  const donePct = tasks.length > 0 ? (done / tasks.length) * 100 : 0
+  const readyPct = tasks.length > 0 ? (ready / tasks.length) * 100 : 0
 
   const currentTaskInfo = state.current_task
     ? tasks.find((t) => t.heading === state.current_task)
-    : null;
+    : null
 
   // For parallel builds, resolve all concurrently-running task infos.
   const runningTaskInfos = (state.running_tasks ?? [])
     .map((h) => tasks.find((t) => t.heading === h))
-    .filter((t): t is NonNullable<typeof t> => t !== undefined);
-  const isParallel = runningTaskInfos.length > 1;
+    .filter((t): t is NonNullable<typeof t> => t !== undefined)
+  const isParallel = runningTaskInfos.length > 1
   const nextMilestone = tasks.find(
-    (t) => t.agent === "milestone" && t.status !== "done",
-  );
+    (t) => t.agent === 'milestone' && t.status !== 'done',
+  )
 
-  const agentCounts: Record<string, number> = {};
+  const agentCounts: Record<string, number> = {}
   for (const t of tasks) {
-    agentCounts[t.agent] = (agentCounts[t.agent] || 0) + 1;
+    agentCounts[t.agent] = (agentCounts[t.agent] || 0) + 1
   }
 
-  const perTask: Record<string, { tokens: number; calls: number }> = {};
+  const perTask: Record<string, { tokens: number; calls: number }> = {}
   for (const s of project.budget.sessions) {
-    const key = s.task || "unknown";
-    if (!perTask[key]) perTask[key] = { tokens: 0, calls: 0 };
-    perTask[key].tokens += s.tokens;
-    perTask[key].calls += 1;
+    const key = s.task || 'unknown'
+    if (!perTask[key]) perTask[key] = { tokens: 0, calls: 0 }
+    perTask[key].tokens += s.tokens
+    perTask[key].calls += 1
   }
-  const taskUsage = Object.entries(perTask)
-    .sort(([, a], [, b]) => b.tokens - a.tokens);
+  const taskUsage = Object.entries(perTask).sort(
+    ([, a], [, b]) => b.tokens - a.tokens,
+  )
 
   return (
     <div className="space-y-6">
@@ -72,9 +73,10 @@ export function Overview({ project, invalidModels }: OverviewProps) {
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           <div>
             <span className="font-medium">
-              {invalidModels.length} model{invalidModels.length > 1 ? "s" : ""} not available:
-            </span>{" "}
-            {invalidModels.map((m) => m.agent).join(", ")} — go to the{" "}
+              {invalidModels.length} model{invalidModels.length > 1 ? 's' : ''}{' '}
+              not available:
+            </span>{' '}
+            {invalidModels.map((m) => m.agent).join(', ')} — go to the{' '}
             <strong>Models tab</strong> to fix before running the pipeline.
           </div>
         </div>
@@ -89,11 +91,16 @@ export function Overview({ project, invalidModels }: OverviewProps) {
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
             </span>
             <span className="text-xs font-medium text-success">Running</span>
-            <span className="text-xs text-muted-foreground">{runningTaskInfos.length} tasks in parallel</span>
+            <span className="text-xs text-muted-foreground">
+              {runningTaskInfos.length} tasks in parallel
+            </span>
           </div>
           <div className="flex flex-wrap gap-2 pl-5">
             {runningTaskInfos.map((t) => (
-              <div key={t.id} className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-xs">
+              <div
+                key={t.id}
+                className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-xs"
+              >
                 <span className="font-mono text-muted-foreground">#{t.id}</span>
                 <span className="font-medium">{t.title}</span>
                 <Badge variant="outline" className="text-[10px] h-4 px-1.5">
@@ -112,14 +119,20 @@ export function Overview({ project, invalidModels }: OverviewProps) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
           </span>
-          <span className="text-xs font-medium text-success shrink-0">Running</span>
-          <span className="font-mono text-xs text-muted-foreground shrink-0">#{currentTaskInfo.id}</span>
+          <span className="text-xs font-medium text-success shrink-0">
+            Running
+          </span>
+          <span className="font-mono text-xs text-muted-foreground shrink-0">
+            #{currentTaskInfo.id}
+          </span>
           <span className="font-medium truncate">{currentTaskInfo.title}</span>
           <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0">
             {currentTaskInfo.agent}
           </Badge>
           {state.attempt > 1 && (
-            <span className="text-xs text-warning shrink-0">attempt {state.attempt}</span>
+            <span className="text-xs text-warning shrink-0">
+              attempt {state.attempt}
+            </span>
           )}
         </div>
       )}
@@ -229,9 +242,9 @@ export function Overview({ project, invalidModels }: OverviewProps) {
               {state.failed.length > 0
                 ? state.failed[state.failed.length - 1].task.replace(
                     /^## \d{3} - /,
-                    "",
+                    '',
                   )
-                : "No failed tasks"}
+                : 'No failed tasks'}
             </p>
           </CardContent>
         </Card>
@@ -263,7 +276,7 @@ export function Overview({ project, invalidModels }: OverviewProps) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             {Object.entries(agentCounts).map(([agent, count]) => (
               <div key={agent}>
-                <span className="text-muted-foreground">{agent}:</span>{" "}
+                <span className="text-muted-foreground">{agent}:</span>{' '}
                 <span className="font-medium">{count}</span>
               </div>
             ))}
@@ -273,7 +286,12 @@ export function Overview({ project, invalidModels }: OverviewProps) {
 
       {taskUsage.length > 0 && (
         <Tile
-          title={<><Coins className="h-4 w-4" />Token Usage by Task</>}
+          title={
+            <>
+              <Coins className="h-4 w-4" />
+              Token Usage by Task
+            </>
+          }
           flush
           maxH="350px"
         >
@@ -288,13 +306,14 @@ export function Overview({ project, invalidModels }: OverviewProps) {
             </TableHeader>
             <TableBody>
               {taskUsage.map(([task, usage]) => {
-                const share = project.budget.total_tokens > 0
-                  ? (usage.tokens / project.budget.total_tokens) * 100
-                  : 0;
+                const share =
+                  project.budget.total_tokens > 0
+                    ? (usage.tokens / project.budget.total_tokens) * 100
+                    : 0
                 return (
                   <TableRow key={task}>
                     <TableCell className="text-xs font-medium max-w-50 truncate">
-                      {task.replace(/^## \d{3} - /, "")}
+                      {task.replace(/^## \d{3} - /, '')}
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs">
                       {fmt(usage.tokens)}
@@ -316,7 +335,7 @@ export function Overview({ project, invalidModels }: OverviewProps) {
                       </div>
                     </TableCell>
                   </TableRow>
-                );
+                )
               })}
             </TableBody>
           </Table>
@@ -335,28 +354,31 @@ export function Overview({ project, invalidModels }: OverviewProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...project.budget.sessions].reverse().slice(0, 30).map((s, i) => (
-                <TableRow key={i}>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                    {fmtDate(s.timestamp)}
-                  </TableCell>
-                  <TableCell className="text-xs font-medium truncate max-w-45">
-                    {(s.task || "\u2014").replace(/^## \d{3} - /, "")}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {s.phase}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-xs">
-                    {fmt(s.tokens)}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {[...project.budget.sessions]
+                .reverse()
+                .slice(0, 30)
+                .map((s, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {fmtDate(s.timestamp)}
+                    </TableCell>
+                    <TableCell className="text-xs font-medium truncate max-w-45">
+                      {(s.task || '\u2014').replace(/^## \d{3} - /, '')}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {s.phase}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {fmt(s.tokens)}
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </Tile>
       )}
     </div>
-  );
+  )
 }

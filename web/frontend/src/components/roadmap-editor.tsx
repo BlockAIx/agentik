@@ -1,16 +1,20 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useRoadmap, useUpdateRoadmap, useValidateRoadmap } from "@/hooks/use-queries"
-import Editor, { type BeforeMount } from "@monaco-editor/react"
+import Editor, { type BeforeMount } from '@monaco-editor/react'
 import {
-    AlertTriangle,
-    CheckCircle2,
-    FileCode2,
-    Loader2,
-    Save,
-    ShieldCheck,
-} from "lucide-react"
-import { useState } from "react"
+  AlertTriangle,
+  CheckCircle2,
+  FileCode2,
+  Loader2,
+  Save,
+  ShieldCheck,
+} from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  useRoadmap,
+  useUpdateRoadmap,
+  useValidateRoadmap,
+} from '@/hooks/use-queries'
 
 type ValidationResult = {
   valid: boolean
@@ -30,9 +34,11 @@ export function RoadmapEditor({
   const [localContent, setLocalContent] = useState<string | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState<string | null>(null)
-  const [validateResult, setValidateResult] = useState<ValidationResult | null>(null)
+  const [validateResult, setValidateResult] = useState<ValidationResult | null>(
+    null,
+  )
 
-  const baseContent = roadmapData ? JSON.stringify(roadmapData, null, 2) : ""
+  const baseContent = roadmapData ? JSON.stringify(roadmapData, null, 2) : ''
   const content = localContent ?? baseContent
   const isDirty = localContent !== null
 
@@ -41,40 +47,40 @@ export function RoadmapEditor({
     monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
       validate: true,
       allowComments: false,
-      trailingCommas: "error",
-      schemaValidation: "warning",
+      trailingCommas: 'error',
+      schemaValidation: 'warning',
       schemas: [
         {
-          uri: "https://agentik.dev/roadmap.schema.json",
-          fileMatch: ["*"],
+          uri: 'https://agentik.dev/roadmap.schema.json',
+          fileMatch: ['*'],
           schema: {
-            type: "object",
-            required: ["name", "ecosystem", "tasks"],
+            type: 'object',
+            required: ['name', 'ecosystem', 'tasks'],
             properties: {
-              name: { type: "string" },
+              name: { type: 'string' },
               ecosystem: {
-                type: "string",
-                enum: ["python", "deno", "node", "go", "rust"],
+                type: 'string',
+                enum: ['python', 'deno', 'node', 'go', 'rust'],
               },
-              preamble: { type: "string" },
+              preamble: { type: 'string' },
               git: {
-                type: "object",
-                properties: { enabled: { type: "boolean" } },
+                type: 'object',
+                properties: { enabled: { type: 'boolean' } },
               },
               tasks: {
-                type: "array",
+                type: 'array',
                 items: {
-                  type: "object",
-                  required: ["id", "title", "depends_on"],
+                  type: 'object',
+                  required: ['id', 'title', 'depends_on'],
                   properties: {
-                    id: { type: "integer" },
-                    title: { type: "string" },
-                    depends_on: { type: "array", items: { type: "integer" } },
-                    agent: { type: "string" },
-                    context: { type: "array", items: { type: "string" } },
-                    outputs: { type: "array", items: { type: "string" } },
-                    acceptance: { type: "string" },
-                    description: { type: "string" },
+                    id: { type: 'integer' },
+                    title: { type: 'string' },
+                    depends_on: { type: 'array', items: { type: 'integer' } },
+                    agent: { type: 'string' },
+                    context: { type: 'array', items: { type: 'string' } },
+                    outputs: { type: 'array', items: { type: 'string' } },
+                    acceptance: { type: 'string' },
+                    description: { type: 'string' },
                   },
                 },
               },
@@ -92,13 +98,13 @@ export function RoadmapEditor({
     try {
       parsed = JSON.parse(content)
     } catch (e) {
-      setParseError(e instanceof Error ? e.message : "Invalid JSON")
+      setParseError(e instanceof Error ? e.message : 'Invalid JSON')
       return
     }
     try {
       await updateMutation.mutateAsync({ name: projectName, data: parsed })
       setLocalContent(null)
-      setSaveMsg("Saved successfully")
+      setSaveMsg('Saved successfully')
     } catch (e) {
       setParseError(String(e))
     }
@@ -151,19 +157,19 @@ export function RoadmapEditor({
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="border-t" style={{ height: "60vh" }}>
+          <div className="border-t" style={{ height: '60vh' }}>
             <Editor
               defaultLanguage="json"
               value={content}
-              onChange={(v: string | undefined) => setLocalContent(v ?? "")}
+              onChange={(v: string | undefined) => setLocalContent(v ?? '')}
               beforeMount={handleBeforeMount}
               theme="vs-dark"
               options={{
                 minimap: { enabled: false },
                 fontSize: 13,
-                lineNumbers: "on",
+                lineNumbers: 'on',
                 scrollBeyondLastLine: false,
-                wordWrap: "on",
+                wordWrap: 'on',
                 tabSize: 2,
                 formatOnPaste: true,
               }}
@@ -185,50 +191,54 @@ export function RoadmapEditor({
           {saveMsg}
         </div>
       )}
-      {validateResult && validateResult.valid && validateResult.warnings.length === 0 && (
+      {validateResult?.valid && validateResult.warnings.length === 0 && (
         <div className="p-3 bg-success/10 border border-success/20 rounded-md text-sm text-success flex items-start gap-2">
           <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
           All checks passed — ROADMAP is valid.
         </div>
       )}
-      {validateResult && (validateResult.errors.length > 0 || validateResult.warnings.length > 0) && (
-        <div className="space-y-2">
-          {validateResult.errors.length > 0 && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
-              <div className="flex items-center gap-2 font-medium mb-2">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                {validateResult.errors.length} error{validateResult.errors.length > 1 ? "s" : ""}
+      {validateResult &&
+        (validateResult.errors.length > 0 ||
+          validateResult.warnings.length > 0) && (
+          <div className="space-y-2">
+            {validateResult.errors.length > 0 && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
+                <div className="flex items-center gap-2 font-medium mb-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {validateResult.errors.length} error
+                  {validateResult.errors.length > 1 ? 's' : ''}
+                </div>
+                <ul className="space-y-1 pl-6 list-disc">
+                  {validateResult.errors.map((e, i) => (
+                    <li key={i}>
+                      <span className="font-mono text-xs">task {e.task}</span>
+                      {' — '}
+                      {e.message}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-1 pl-6 list-disc">
-                {validateResult.errors.map((e, i) => (
-                  <li key={i}>
-                    <span className="font-mono text-xs">task {e.task}</span>
-                    {" — "}
-                    {e.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {validateResult.warnings.length > 0 && (
-            <div className="p-3 bg-warning/10 border border-warning/20 rounded-md text-sm text-warning-foreground">
-              <div className="flex items-center gap-2 font-medium mb-2">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                {validateResult.warnings.length} warning{validateResult.warnings.length > 1 ? "s" : ""}
+            )}
+            {validateResult.warnings.length > 0 && (
+              <div className="p-3 bg-warning/10 border border-warning/20 rounded-md text-sm text-warning-foreground">
+                <div className="flex items-center gap-2 font-medium mb-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {validateResult.warnings.length} warning
+                  {validateResult.warnings.length > 1 ? 's' : ''}
+                </div>
+                <ul className="space-y-1 pl-6 list-disc">
+                  {validateResult.warnings.map((w, i) => (
+                    <li key={i}>
+                      <span className="font-mono text-xs">task {w.task}</span>
+                      {' — '}
+                      {w.message}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-1 pl-6 list-disc">
-                {validateResult.warnings.map((w, i) => (
-                  <li key={i}>
-                    <span className="font-mono text-xs">task {w.task}</span>
-                    {" — "}
-                    {w.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
     </div>
   )
 }

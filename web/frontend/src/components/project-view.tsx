@@ -1,28 +1,3 @@
-import { Controls } from "@/components/controls"
-import { Generator } from "@/components/generator"
-import { Graph } from "@/components/graph"
-import { Layout } from "@/components/layout"
-import { Logs } from "@/components/logs"
-import { Models } from "@/components/models"
-import { Overview } from "@/components/overview"
-import { RoadmapEditor } from "@/components/roadmap-editor"
-import { Tasks } from "@/components/tasks"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import {
-  useAvailableModels,
-  useInvalidateProject,
-  useModels,
-  usePipelineStatus,
-  useProject,
-} from "@/hooks/use-queries"
-import { useWsStore } from "@/stores/ws-store"
 import {
   Cpu,
   FileCode2,
@@ -32,19 +7,39 @@ import {
   ListChecks,
   Settings2,
   Sparkles,
-} from "lucide-react"
-import { useCallback, useEffect } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+} from 'lucide-react'
+import { useCallback, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Controls } from '@/components/controls'
+import { Generator } from '@/components/generator'
+import { Graph } from '@/components/graph'
+import { Layout } from '@/components/layout'
+import { Logs } from '@/components/logs'
+import { Models } from '@/components/models'
+import { Overview } from '@/components/overview'
+import { RoadmapEditor } from '@/components/roadmap-editor'
+import { Tasks } from '@/components/tasks'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  useAvailableModels,
+  useInvalidateProject,
+  useModels,
+  usePipelineStatus,
+  useProject,
+} from '@/hooks/use-queries'
+import { useWsStore } from '@/stores/ws-store'
 
 const VALID_TABS = [
-  "overview",
-  "graph",
-  "tasks",
-  "logs",
-  "editor",
-  "generator",
-  "models",
-  "controls",
+  'overview',
+  'graph',
+  'tasks',
+  'logs',
+  'editor',
+  'generator',
+  'models',
+  'controls',
 ] as const
 
 type Tab = (typeof VALID_TABS)[number]
@@ -55,20 +50,22 @@ function isValidTab(v: string | undefined): v is Tab {
 
 export function ProjectView(): React.JSX.Element {
   const { name, tab } = useParams<{ name: string; tab: string }>()
-  const projectName = name ?? ""
+  const projectName = name ?? ''
   const navigate = useNavigate()
-  const activeTab: Tab = isValidTab(tab) ? tab : "overview"
+  const activeTab: Tab = isValidTab(tab) ? tab : 'overview'
 
   const onTabChange = useCallback(
     (value: string) => {
-      const next = value === "overview" ? "" : `/${value}`
+      const next = value === 'overview' ? '' : `/${value}`
       navigate(`/project/${projectName}${next}`, { replace: true })
     },
     [navigate, projectName],
   )
 
   const { data: pipeStatus } = usePipelineStatus()
-  const pipelineActive = !!(pipeStatus?.running && pipeStatus.project === projectName)
+  const pipelineActive = !!(
+    pipeStatus?.running && pipeStatus.project === projectName
+  )
 
   const { data: detail, isLoading } = useProject(projectName, pipelineActive)
   const { data: availableModels = [] } = useAvailableModels()
@@ -117,7 +114,11 @@ export function ProjectView(): React.JSX.Element {
           <p>Project &ldquo;{projectName}&rdquo; not found.</p>
         </div>
       ) : (
-        <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={onTabChange}
+          className="space-y-4"
+        >
           <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="gap-1 text-xs">
               <LayoutDashboard className="h-3.5 w-3.5" />

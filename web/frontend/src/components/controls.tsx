@@ -1,15 +1,3 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import {
-  useInvalidateProject,
-  usePipelineStatus,
-  useRunPipeline,
-  useStopPipeline,
-} from "@/hooks/use-queries"
-import type { ProjectDetail } from "@/lib/api"
-import { useWsStore } from "@/stores/ws-store"
 import {
   AlertTriangle,
   Loader2,
@@ -17,8 +5,20 @@ import {
   RefreshCw,
   Square,
   Trash2,
-} from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+} from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import {
+  useInvalidateProject,
+  usePipelineStatus,
+  useRunPipeline,
+  useStopPipeline,
+} from '@/hooks/use-queries'
+import type { ProjectDetail } from '@/lib/api'
+import { useWsStore } from '@/stores/ws-store'
 
 const MAX_LOG_LINES = 2000
 
@@ -46,11 +46,14 @@ export function Controls({
 
   const handleWs = useCallback(
     (msg: { event: string; [k: string]: unknown }) => {
-      if (msg.event === "pipeline_started" && msg.project === projectName) {
+      if (msg.event === 'pipeline_started' && msg.project === projectName) {
         setLogs([])
-      } else if (msg.event === "pipeline_stopped" && msg.project === projectName) {
+      } else if (
+        msg.event === 'pipeline_stopped' &&
+        msg.project === projectName
+      ) {
         invalidate(projectName)
-      } else if (msg.event === "log_line" && msg.project === projectName) {
+      } else if (msg.event === 'log_line' && msg.project === projectName) {
         setLogs((prev) => {
           const next = [...prev, msg.line as string]
           return next.length > MAX_LOG_LINES ? next.slice(-MAX_LOG_LINES) : next
@@ -65,13 +68,13 @@ export function Controls({
   useEffect(() => {
     const el = logContainerRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [logs])
+  }, [])
 
   const handleRun = async () => {
     setMessage(null)
     try {
       const res = await runMutation.mutateAsync({ name: projectName, verbose })
-      if (!res.started) setMessage("Pipeline already running")
+      if (!res.started) setMessage('Pipeline already running')
     } catch {
       /* mutation state has error */
     }
@@ -81,7 +84,7 @@ export function Controls({
     setMessage(null)
     try {
       const res = await stopMutation.mutateAsync(projectName)
-      setMessage(res.stopped ? "Stop signal sent" : "Pipeline was not running")
+      setMessage(res.stopped ? 'Stop signal sent' : 'Pipeline was not running')
     } catch {
       /* mutation state has error */
     }
@@ -117,7 +120,9 @@ export function Controls({
             <Button
               variant="destructive"
               onClick={handleStop}
-              disabled={stopMutation.isPending || !pipelineActive || !statusChecked}
+              disabled={
+                stopMutation.isPending || !pipelineActive || !statusChecked
+              }
             >
               {stopMutation.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -198,7 +203,7 @@ export function Controls({
             <div>
               <span className="text-muted-foreground">Attempt</span>
               <div className="mt-1 font-medium">
-                {state.attempt || "\u2014"}
+                {state.attempt || '\u2014'}
               </div>
             </div>
             <div>
@@ -235,12 +240,15 @@ export function Controls({
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <div ref={logContainerRef} className="bg-terminal rounded-b-lg font-mono text-xs text-terminal-foreground h-115 overflow-y-auto p-3 border-t border-border">
+          <div
+            ref={logContainerRef}
+            className="bg-terminal rounded-b-lg font-mono text-xs text-terminal-foreground h-115 overflow-y-auto p-3 border-t border-border"
+          >
             {logs.length === 0 ? (
               <span className="text-terminal-muted">
                 {pipelineActive
-                  ? "Starting pipeline..."
-                  : "No output yet — click Run Pipeline to start."}
+                  ? 'Starting pipeline...'
+                  : 'No output yet — click Run Pipeline to start.'}
               </span>
             ) : (
               logs.map((line, i) => (

@@ -1,31 +1,34 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge'
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import type { ProjectDetail } from "@/lib/api";
-import { fmt, fmtDate } from "@/lib/format";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import type { ProjectDetail } from '@/lib/api'
+import { fmt, fmtDate } from '@/lib/format'
 
 function statusBadge(status: string) {
   switch (status) {
-    case "done":
+    case 'done':
       return (
         <Badge variant="default" className="bg-success text-success-foreground">
           Done
         </Badge>
-      );
-    case "ready":
+      )
+    case 'ready':
       return (
-        <Badge variant="secondary" className="bg-warning text-warning-foreground">
+        <Badge
+          variant="secondary"
+          className="bg-warning text-warning-foreground"
+        >
           Ready
         </Badge>
-      );
+      )
     default:
-      return <Badge variant="outline">Blocked</Badge>;
+      return <Badge variant="outline">Blocked</Badge>
   }
 }
 
@@ -48,12 +51,10 @@ export function Tasks({ project }: { project: ProjectDetail }) {
           {project.tasks.map((task) => (
             <TableRow
               key={task.id}
-              className={
-                task.status === "done" ? "opacity-60" : ""
-              }
+              className={task.status === 'done' ? 'opacity-60' : ''}
             >
               <TableCell className="font-mono text-muted-foreground">
-                {String(task.id).padStart(3, "0")}
+                {String(task.id).padStart(3, '0')}
               </TableCell>
               <TableCell className="font-medium">{task.title}</TableCell>
               <TableCell>{statusBadge(task.status)}</TableCell>
@@ -63,20 +64,20 @@ export function Tasks({ project }: { project: ProjectDetail }) {
                 </Badge>
               </TableCell>
               <TableCell className="text-right font-mono text-sm">
-                {task.tokens > 0 ? fmt(task.tokens) : "—"}
+                {task.tokens > 0 ? fmt(task.tokens) : '—'}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                {task.completed_at ? fmtDate(task.completed_at) : "—"}
+                {task.completed_at ? fmtDate(task.completed_at) : '—'}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
                 {task.deps.length > 0
-                  ? task.deps.map((d) => `#${d}`).join(", ")
-                  : "—"}
+                  ? task.deps.map((d) => `#${d}`).join(', ')
+                  : '—'}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
     </div>
-  );
+  )
 }

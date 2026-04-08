@@ -1,16 +1,3 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import {
-  useAvailableModels,
-  useProviderLogin,
-  useProviderLogout,
-  useProviders,
-  useRefreshModels,
-} from "@/hooks/use-queries"
-import type { AvailableModel, ProviderInfo } from "@/lib/api"
 import {
   AlertTriangle,
   CheckCircle2,
@@ -26,8 +13,21 @@ import {
   Server,
   Terminal,
   Zap,
-} from "lucide-react"
-import { useState } from "react"
+} from 'lucide-react'
+import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import {
+  useAvailableModels,
+  useProviderLogin,
+  useProviderLogout,
+  useProviders,
+  useRefreshModels,
+} from '@/hooks/use-queries'
+import type { AvailableModel, ProviderInfo } from '@/lib/api'
 
 /** Shape returned by /api/providers/login. */
 interface LoginGuide {
@@ -63,7 +63,7 @@ export function Providers(): React.JSX.Element {
   const [loginGuide, setLoginGuide] = useState<LoginGuide | null>(null)
   const [showAlternatives, setShowAlternatives] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [modelFilter, setModelFilter] = useState("")
+  const [modelFilter, setModelFilter] = useState('')
 
   const handleLogin = async () => {
     if (loginGuide) {
@@ -116,8 +116,8 @@ export function Providers(): React.JSX.Element {
 
   const hasGithubCopilot = providers.some(
     (p) =>
-      p.name.toLowerCase().includes("github copilot") ||
-      p.name.toLowerCase().includes("copilot"),
+      p.name.toLowerCase().includes('github copilot') ||
+      p.name.toLowerCase().includes('copilot'),
   )
 
   return (
@@ -136,7 +136,7 @@ export function Providers(): React.JSX.Element {
             disabled={loadingProviders}
           >
             <RefreshCw
-              className={`h-3.5 w-3.5 mr-1 ${loadingProviders ? "animate-spin" : ""}`}
+              className={`h-3.5 w-3.5 mr-1 ${loadingProviders ? 'animate-spin' : ''}`}
             />
             Refresh
           </Button>
@@ -197,28 +197,28 @@ export function Providers(): React.JSX.Element {
                 onClick={handleLogin}
                 disabled={loginMutation.isPending}
                 size="sm"
-                variant={loginGuide ? "secondary" : "default"}
+                variant={loginGuide ? 'secondary' : 'default'}
               >
                 <LogIn className="h-3.5 w-3.5 mr-1.5" />
                 {loginMutation.isPending
-                  ? "Loading..."
+                  ? 'Loading...'
                   : loginGuide
-                    ? "Hide instructions"
-                    : "Connect GitHub Copilot"}
+                    ? 'Hide instructions'
+                    : 'Connect GitHub Copilot'}
               </Button>
             ) : (
               <Button
                 onClick={handleLogin}
                 disabled={loginMutation.isPending}
-                variant={loginGuide ? "secondary" : "outline"}
+                variant={loginGuide ? 'secondary' : 'outline'}
                 size="sm"
               >
                 <LogIn className="h-3.5 w-3.5 mr-1.5" />
                 {loginMutation.isPending
-                  ? "Loading..."
+                  ? 'Loading...'
                   : loginGuide
-                    ? "Hide instructions"
-                    : "Add Provider"}
+                    ? 'Hide instructions'
+                    : 'Add Provider'}
               </Button>
             )}
             {providers.length > 0 && (
@@ -230,7 +230,7 @@ export function Providers(): React.JSX.Element {
                 className="text-muted-foreground hover:text-destructive"
               >
                 <LogOut className="h-3.5 w-3.5 mr-1.5" />
-                {logoutMutation.isPending ? "Logging out..." : "Logout"}
+                {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
               </Button>
             )}
           </div>
@@ -245,13 +245,13 @@ export function Providers(): React.JSX.Element {
           )}
 
           <p className="text-xs text-muted-foreground">
-            GitHub Copilot uses OAuth device flow — run the login command in your
-            terminal and follow the on-screen steps. API providers (Anthropic,
-            OpenAI) use environment variables (
+            GitHub Copilot uses OAuth device flow — run the login command in
+            your terminal and follow the on-screen steps. API providers
+            (Anthropic, OpenAI) use environment variables (
             <code className="bg-muted px-1 rounded text-xs">
               ANTHROPIC_API_KEY
             </code>
-            ,{" "}
+            ,{' '}
             <code className="bg-muted px-1 rounded text-xs">
               OPENAI_API_KEY
             </code>
@@ -279,7 +279,7 @@ export function Providers(): React.JSX.Element {
             disabled={refreshMutation.isPending}
           >
             <RefreshCw
-              className={`h-3.5 w-3.5 mr-1 ${refreshMutation.isPending ? "animate-spin" : ""}`}
+              className={`h-3.5 w-3.5 mr-1 ${refreshMutation.isPending ? 'animate-spin' : ''}`}
             />
             Refresh
           </Button>
@@ -345,7 +345,7 @@ export function Providers(): React.JSX.Element {
 
           <p className="text-xs text-muted-foreground">
             These are the models available through your connected providers. Use
-            the model ID (e.g.{" "}
+            the model ID (e.g.{' '}
             <code className="bg-muted px-1 rounded text-xs">
               github-copilot/claude-sonnet-4
             </code>
@@ -388,10 +388,7 @@ function ConnectGuide({
         <Terminal className="h-4 w-4 text-info" />
         <p className="text-sm font-medium">How to connect</p>
         {guide.in_docker && (
-          <Badge
-            variant="outline"
-            className="text-xs text-info border-info/30"
-          >
+          <Badge variant="outline" className="text-xs text-info border-info/30">
             Docker
           </Badge>
         )}
@@ -409,7 +406,7 @@ function ConnectGuide({
           className="shrink-0 h-8 text-xs"
           onClick={copyCmd}
         >
-          {cmdCopied ? "Copied!" : "Copy"}
+          {cmdCopied ? 'Copied!' : 'Copy'}
         </Button>
       </div>
 
@@ -485,16 +482,14 @@ function ConnectGuide({
                   Get key
                 </a>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {alt.description}
-              </p>
+              <p className="text-xs text-muted-foreground">{alt.description}</p>
               <code className="text-xs font-mono bg-muted px-2 py-1 rounded block">
                 {alt.env_var}=sk-...
               </code>
             </div>
           ))}
           <p className="text-xs text-muted-foreground">
-            Add these to your{" "}
+            Add these to your{' '}
             <code className="bg-muted px-1 rounded">.env</code> file at the
             workspace root, then restart the server for them to take effect.
           </p>
@@ -510,14 +505,14 @@ function StepText({ text }: { text: string }): React.JSX.Element {
   return (
     <>
       {parts.map((part, i) => {
-        if (part.startsWith("**") && part.endsWith("**")) {
+        if (part.startsWith('**') && part.endsWith('**')) {
           return (
             <strong key={i} className="text-foreground">
               {part.slice(2, -2)}
             </strong>
           )
         }
-        if (part.startsWith("`") && part.endsWith("`")) {
+        if (part.startsWith('`') && part.endsWith('`')) {
           return (
             <code key={i} className="bg-muted px-1 rounded text-foreground">
               {part.slice(1, -1)}
@@ -551,18 +546,16 @@ function ModelRow({ model }: { model: AvailableModel }): React.JSX.Element {
       onClick={handleCopy}
       title="Click to copy model ID"
     >
-      <span className="text-xs font-mono flex-1 truncate">
-        {model.full_id}
-      </span>
+      <span className="text-xs font-mono flex-1 truncate">{model.full_id}</span>
       <div className="flex items-center gap-2 shrink-0 ml-2">
         <span
           className={`text-xs transition-opacity ${
             copied
-              ? "text-success opacity-100"
-              : "text-muted-foreground opacity-0 group-hover:opacity-100"
+              ? 'text-success opacity-100'
+              : 'text-muted-foreground opacity-0 group-hover:opacity-100'
           }`}
         >
-          {copied ? "Copied!" : "Copy"}
+          {copied ? 'Copied!' : 'Copy'}
         </span>
       </div>
     </div>

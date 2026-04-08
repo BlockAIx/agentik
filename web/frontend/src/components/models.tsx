@@ -1,11 +1,15 @@
-import { ModelCombobox } from "@/components/model-combobox"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { useAvailableModels, useModels, useUpdateModel } from "@/hooks/use-queries"
-import type { AvailableModel, ModelConfig } from "@/lib/api"
-import { AlertTriangle, Cpu, Loader2 } from "lucide-react"
-import { useCallback } from "react"
+import { AlertTriangle, Cpu, Loader2 } from 'lucide-react'
+import { useCallback } from 'react'
+import { ModelCombobox } from '@/components/model-combobox'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import {
+  useAvailableModels,
+  useModels,
+  useUpdateModel,
+} from '@/hooks/use-queries'
+import type { AvailableModel, ModelConfig } from '@/lib/api'
 
 export function Models({
   projectName,
@@ -36,11 +40,9 @@ export function Models({
   const values: Record<string, string> = {}
   for (const m of models) values[m.agent] = m.model
 
-  const buildAgents = models.filter((m) =>
-    ["build", "fix"].includes(m.agent),
-  )
+  const buildAgents = models.filter((m) => ['build', 'fix'].includes(m.agent))
   const supportAgents = models.filter((m) =>
-    ["architect", "milestone"].includes(m.agent),
+    ['architect', 'milestone'].includes(m.agent),
   )
 
   const error = fetchError ?? mutation.error
@@ -78,15 +80,15 @@ export function Models({
       <Card>
         <CardContent>
           <p className="text-xs text-muted-foreground">
-            Models are stored in the project&apos;s{" "}
-            <code className="bg-muted px-1 rounded">opencode.jsonc</code>.
-            Use the format{" "}
-            <code className="bg-muted px-1 rounded">provider/model-name</code>{" "}
-            (e.g.{" "}
+            Models are stored in the project&apos;s{' '}
+            <code className="bg-muted px-1 rounded">opencode.jsonc</code>. Use
+            the format{' '}
+            <code className="bg-muted px-1 rounded">provider/model-name</code>{' '}
+            (e.g.{' '}
             <code className="bg-muted px-1 rounded">
               github-copilot/claude-sonnet-4-5
             </code>
-            ). Selections are saved immediately. Models shown in{" "}
+            ). Selections are saved immediately. Models shown in{' '}
             <span className="text-destructive">red</span> are not available
             through your connected providers.
           </p>
@@ -130,7 +132,7 @@ function AgentGroup({
       </CardHeader>
       <CardContent className="space-y-3">
         {agents.map((m, i) => {
-          const val = values[m.agent] || ""
+          const val = values[m.agent] || ''
           const invalid = isInvalid(val)
           return (
             <div key={m.agent}>
@@ -139,7 +141,7 @@ function AgentGroup({
                 <div className="w-24 shrink-0">
                   <Badge
                     variant="outline"
-                    className={`text-xs font-mono ${invalid ? "border-destructive text-destructive" : ""}`}
+                    className={`text-xs font-mono ${invalid ? 'border-destructive text-destructive' : ''}`}
                   >
                     {m.agent}
                   </Badge>

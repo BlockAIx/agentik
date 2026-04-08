@@ -1,4 +1,6 @@
-import { Button } from "@/components/ui/button"
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Command,
   CommandEmpty,
@@ -6,16 +8,14 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
+} from '@/components/ui/command'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import type { AvailableModel } from "@/lib/api"
-import { cn } from "@/lib/utils"
-import { Check, ChevronsUpDown } from "lucide-react"
-import { useCallback, useMemo, useState } from "react"
+} from '@/components/ui/popover'
+import type { AvailableModel } from '@/lib/api'
+import { cn } from '@/lib/utils'
 
 interface ModelComboboxProps {
   value: string
@@ -36,18 +36,20 @@ export function ModelCombobox({
   onChange,
   models,
   loading = false,
-  placeholder = "provider/model-name",
+  placeholder = 'provider/model-name',
   className,
   invalid = false,
 }: ModelComboboxProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState('')
 
   // Filter models by search term.
   const filtered = useMemo(() => {
     if (!search) return models.slice(0, MAX_UNFILTERED)
     const lower = search.toLowerCase()
-    return models.filter((m) => m.full_id.toLowerCase().includes(lower)).slice(0, 100)
+    return models
+      .filter((m) => m.full_id.toLowerCase().includes(lower))
+      .slice(0, 100)
   }, [models, search])
 
   // Group filtered models by provider.
@@ -83,9 +85,10 @@ export function ModelCombobox({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "justify-between font-mono text-xs h-8",
-            !value && "text-muted-foreground",
-            invalid && "border-destructive text-destructive focus:ring-destructive",
+            'justify-between font-mono text-xs h-8',
+            !value && 'text-muted-foreground',
+            invalid &&
+              'border-destructive text-destructive focus:ring-destructive',
             className,
           )}
         >
@@ -103,10 +106,10 @@ export function ModelCombobox({
           <CommandList>
             <CommandEmpty>
               {loading
-                ? "Loading models..."
+                ? 'Loading models...'
                 : search
-                ? "No models found. You can still type a custom model ID."
-                : "No models available. You can still type a custom model ID."}
+                  ? 'No models found. You can still type a custom model ID.'
+                  : 'No models available. You can still type a custom model ID.'}
             </CommandEmpty>
             {/* Allow using custom value that isn't in the catalog */}
             {customNotInList && (
@@ -118,8 +121,8 @@ export function ModelCombobox({
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-3 w-3",
-                      value === search ? "opacity-100" : "opacity-0",
+                      'mr-2 h-3 w-3',
+                      value === search ? 'opacity-100' : 'opacity-0',
                     )}
                   />
                   {search}
@@ -138,8 +141,8 @@ export function ModelCombobox({
                     >
                       <Check
                         className={cn(
-                          "mr-2 h-3 w-3 shrink-0",
-                          value === m.full_id ? "opacity-100" : "opacity-0",
+                          'mr-2 h-3 w-3 shrink-0',
+                          value === m.full_id ? 'opacity-100' : 'opacity-0',
                         )}
                       />
                       <span className="flex-1 truncate">{m.model}</span>

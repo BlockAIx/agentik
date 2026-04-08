@@ -1,29 +1,29 @@
-import { Button } from "@/components/ui/button"
+import { Loader2, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { useCreateProject } from "@/hooks/use-queries"
-import { Loader2, Plus } from "lucide-react"
-import { useState } from "react"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { useCreateProject } from '@/hooks/use-queries'
 
-const ECOSYSTEMS = ["python", "deno", "node", "go", "rust"] as const
+const ECOSYSTEMS = ['python', 'deno', 'node', 'go', 'rust'] as const
 
 export function CreateProjectDialog({
   onCreated,
@@ -31,9 +31,9 @@ export function CreateProjectDialog({
   onCreated: (name: string) => void
 }): React.JSX.Element {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState("")
-  const [ecosystem, setEcosystem] = useState("python")
-  const [preamble, setPreamble] = useState("")
+  const [name, setName] = useState('')
+  const [ecosystem, setEcosystem] = useState('python')
+  const [preamble, setPreamble] = useState('')
   const [git, setGit] = useState(true)
   const mutation = useCreateProject()
 
@@ -55,9 +55,9 @@ export function CreateProjectDialog({
   }
 
   const resetForm = () => {
-    setName("")
-    setEcosystem("python")
-    setPreamble("")
+    setName('')
+    setEcosystem('python')
+    setPreamble('')
     setGit(true)
     mutation.reset()
   }
@@ -71,7 +71,11 @@ export function CreateProjectDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" className="h-8 gap-1.5 text-xs" aria-label="Create new project">
+        <Button
+          size="sm"
+          className="h-8 gap-1.5 text-xs"
+          aria-label="Create new project"
+        >
           <Plus className="h-3.5 w-3.5" />
           New Project
         </Button>
@@ -121,11 +125,7 @@ export function CreateProjectDialog({
           </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="git-toggle">Git managed</Label>
-            <Switch
-              id="git-toggle"
-              checked={git}
-              onCheckedChange={setGit}
-            />
+            <Switch id="git-toggle" checked={git} onCheckedChange={setGit} />
           </div>
           {mutation.error && (
             <div className="p-2 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
@@ -137,8 +137,13 @@ export function CreateProjectDialog({
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!name.trim() || mutation.isPending}>
-            {mutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+          <Button
+            onClick={handleSubmit}
+            disabled={!name.trim() || mutation.isPending}
+          >
+            {mutation.isPending && (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            )}
             Create
           </Button>
         </DialogFooter>

@@ -1,7 +1,8 @@
 /** Card wrapper with an optional capped-height scrollable content area. */
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import type React from "react"
+
+import type React from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 interface TileProps {
   title?: React.ReactNode
@@ -29,8 +30,8 @@ export function Tile({
   const content = maxH ? (
     <div
       className={cn(
-        "w-full overflow-y-auto",
-        scrollBoth ? "overflow-x-auto" : "overflow-x-hidden",
+        'w-full overflow-y-auto',
+        scrollBoth ? 'overflow-x-auto' : 'overflow-x-hidden',
       )}
       style={{ maxHeight: maxH }}
     >
@@ -45,17 +46,21 @@ export function Tile({
       {hasHeader && (
         <CardHeader
           className={cn(
-            "flex flex-row items-center",
-            action ? "justify-between" : "",
+            'flex flex-row items-center',
+            action ? 'justify-between' : '',
           )}
         >
           {title != null && (
-            <CardTitle className="text-sm flex items-center gap-1.5">{title}</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              {title}
+            </CardTitle>
           )}
           {action}
         </CardHeader>
       )}
-      <CardContent className={flush ? "py-0" : undefined}>{content}</CardContent>
+      <CardContent className={flush ? 'py-0' : undefined}>
+        {content}
+      </CardContent>
     </Card>
   )
 }

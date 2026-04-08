@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { useWsStore } from "./ws-store"
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useWsStore } from './ws-store'
 
-describe("ws-store", () => {
+describe('ws-store', () => {
   beforeEach(() => {
     // Reset store state between tests
     useWsStore.setState({ connected: false })
@@ -11,18 +11,18 @@ describe("ws-store", () => {
     vi.restoreAllMocks()
   })
 
-  it("starts disconnected", () => {
+  it('starts disconnected', () => {
     expect(useWsStore.getState().connected).toBe(false)
   })
 
-  it("subscribe returns an unsubscribe function", () => {
+  it('subscribe returns an unsubscribe function', () => {
     const listener = vi.fn()
     const unsub = useWsStore.getState().subscribe(listener)
-    expect(typeof unsub).toBe("function")
+    expect(typeof unsub).toBe('function')
     unsub()
   })
 
-  it("_init returns a cleanup function", () => {
+  it('_init returns a cleanup function', () => {
     // Mock WebSocket with a real constructor function
     const closeFn = vi.fn()
     function MockWebSocket() {
@@ -38,10 +38,10 @@ describe("ws-store", () => {
     }
     MockWebSocket.OPEN = 1
     MockWebSocket.CLOSED = 3
-    vi.stubGlobal("WebSocket", MockWebSocket)
+    vi.stubGlobal('WebSocket', MockWebSocket)
 
     const cleanup = useWsStore.getState()._init()
-    expect(typeof cleanup).toBe("function")
+    expect(typeof cleanup).toBe('function')
     cleanup()
     expect(closeFn).toHaveBeenCalled()
 

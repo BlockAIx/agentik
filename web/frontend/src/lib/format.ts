@@ -8,10 +8,10 @@ export function fmt(n: number): string {
 /** Format an ISO timestamp as "Mon DD HH:MM". */
 export function fmtDate(iso: string): string {
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
+  if (Number.isNaN(d.getTime())) return iso
   return (
-    d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " +
-    d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' ' +
+    d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   )
 }

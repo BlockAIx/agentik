@@ -1,11 +1,3 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { useBudgetConfig, useUpdateBudgetConfig } from "@/hooks/use-queries"
-import type { BudgetConfig } from "@/lib/api"
 import {
   CheckCircle2,
   Coins,
@@ -13,8 +5,16 @@ import {
   RotateCcw,
   Save,
   Settings2,
-} from "lucide-react"
-import { useState } from "react"
+} from 'lucide-react'
+import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { useBudgetConfig, useUpdateBudgetConfig } from '@/hooks/use-queries'
+import type { BudgetConfig } from '@/lib/api'
 
 const DEFAULT_CONFIG: BudgetConfig = {
   monthly_limit_tokens: 2_000_000_000,
@@ -55,12 +55,15 @@ export function GlobalConfig(): React.JSX.Element {
     key: K,
     value: BudgetConfig[K],
   ) => {
-    setLocalConfig((prev) => ({ ...(prev ?? original ?? DEFAULT_CONFIG), [key]: value }))
+    setLocalConfig((prev) => ({
+      ...(prev ?? original ?? DEFAULT_CONFIG),
+      [key]: value,
+    }))
     setSaved(false)
   }
 
   const updatePrice = (
-    key: keyof BudgetConfig["token_prices_usd_per_million"],
+    key: keyof BudgetConfig['token_prices_usd_per_million'],
     value: number,
   ) => {
     setLocalConfig((prev) => {
@@ -98,7 +101,10 @@ export function GlobalConfig(): React.JSX.Element {
             </Badge>
           )}
           {saved && !isDirty && (
-            <Badge variant="default" className="bg-success text-success-foreground text-xs">
+            <Badge
+              variant="default"
+              className="bg-success text-success-foreground text-xs"
+            >
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Saved
             </Badge>
@@ -123,7 +129,7 @@ export function GlobalConfig(): React.JSX.Element {
             disabled={mutation.isPending || !isDirty}
           >
             <Save className="h-3.5 w-3.5 mr-1" />
-            {mutation.isPending ? "Saving..." : "Save"}
+            {mutation.isPending ? 'Saving...' : 'Save'}
           </Button>
         </div>
       </CardHeader>
@@ -144,26 +150,26 @@ export function GlobalConfig(): React.JSX.Element {
             <NumberField
               label="Monthly token limit"
               value={config.monthly_limit_tokens}
-              onChange={(v) => updateField("monthly_limit_tokens", v)}
+              onChange={(v) => updateField('monthly_limit_tokens', v)}
               hint="Total tokens allowed per month"
             />
             <NumberField
               label="Per-task token limit"
               value={config.per_task_limit_tokens}
-              onChange={(v) => updateField("per_task_limit_tokens", v)}
+              onChange={(v) => updateField('per_task_limit_tokens', v)}
               hint="Max tokens per single task"
             />
             <NumberField
               label="Max attempts per task"
               value={config.max_attempts_per_task}
-              onChange={(v) => updateField("max_attempts_per_task", v)}
+              onChange={(v) => updateField('max_attempts_per_task', v)}
               hint="Retry limit before abandoning"
               step={1}
             />
             <NumberField
               label="Max parallel agents"
               value={config.max_parallel_agents}
-              onChange={(v) => updateField("max_parallel_agents", v)}
+              onChange={(v) => updateField('max_parallel_agents', v)}
               hint="Concurrent task builds"
               step={1}
             />
@@ -181,25 +187,25 @@ export function GlobalConfig(): React.JSX.Element {
             <NumberField
               label="Input"
               value={config.token_prices_usd_per_million.input}
-              onChange={(v) => updatePrice("input", v)}
+              onChange={(v) => updatePrice('input', v)}
               step={0.01}
             />
             <NumberField
               label="Output"
               value={config.token_prices_usd_per_million.output}
-              onChange={(v) => updatePrice("output", v)}
+              onChange={(v) => updatePrice('output', v)}
               step={0.01}
             />
             <NumberField
               label="Cache read"
               value={config.token_prices_usd_per_million.cache_read}
-              onChange={(v) => updatePrice("cache_read", v)}
+              onChange={(v) => updatePrice('cache_read', v)}
               step={0.01}
             />
             <NumberField
               label="Cache write"
               value={config.token_prices_usd_per_million.cache_write}
-              onChange={(v) => updatePrice("cache_write", v)}
+              onChange={(v) => updatePrice('cache_write', v)}
               step={0.01}
             />
           </div>

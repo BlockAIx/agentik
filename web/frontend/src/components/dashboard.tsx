@@ -1,16 +1,3 @@
-import { Layout } from "@/components/layout"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  useGlobalBudget,
-  useInvalidateProject,
-  usePipelineStatus,
-  useProjects,
-} from "@/hooks/use-queries"
-import type { ProjectSummary } from "@/lib/api"
-import { fmt } from "@/lib/format"
-import { useWsStore } from "@/stores/ws-store"
 import {
   Activity,
   ArrowRight,
@@ -20,9 +7,22 @@ import {
   Loader2,
   Play,
   Zap,
-} from "lucide-react"
-import { useEffect } from "react"
-import { Link, useNavigate } from "react-router-dom"
+} from 'lucide-react'
+import { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Layout } from '@/components/layout'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  useGlobalBudget,
+  useInvalidateProject,
+  usePipelineStatus,
+  useProjects,
+} from '@/hooks/use-queries'
+import type { ProjectSummary } from '@/lib/api'
+import { fmt } from '@/lib/format'
+import { useWsStore } from '@/stores/ws-store'
 
 export function Dashboard(): React.JSX.Element {
   const navigate = useNavigate()
@@ -35,7 +35,10 @@ export function Dashboard(): React.JSX.Element {
   /* WS-driven invalidation */
   useEffect(() => {
     return useWsStore.getState().subscribe((msg) => {
-      if (msg.event === "pipeline_started" || msg.event === "pipeline_stopped") {
+      if (
+        msg.event === 'pipeline_started' ||
+        msg.event === 'pipeline_stopped'
+      ) {
         invalidate()
       }
     })
@@ -74,7 +77,7 @@ export function Dashboard(): React.JSX.Element {
             title="Projects"
             value={String(projects.length)}
             icon={<FolderOpen className="h-4 w-4" />}
-            detail={`${projects.filter((p) => p.status !== "complete").length} active`}
+            detail={`${projects.filter((p) => p.status !== 'complete').length} active`}
           />
           <KpiCard
             title="Tasks"
@@ -83,18 +86,18 @@ export function Dashboard(): React.JSX.Element {
             detail={
               totalTasks > 0
                 ? `${Math.round((totalDone / totalTasks) * 100)}% complete`
-                : "No tasks"
+                : 'No tasks'
             }
           />
           <KpiCard
             title="Tokens Used"
             value={fmt(totalTokens)}
             icon={<Zap className="h-4 w-4" />}
-            detail={budget ? `${fmt(budget.remaining_tokens)} remaining` : ""}
+            detail={budget ? `${fmt(budget.remaining_tokens)} remaining` : ''}
           />
           <KpiCard
             title="Pipeline"
-            value={pipelineProject ? "Running" : "Idle"}
+            value={pipelineProject ? 'Running' : 'Idle'}
             icon={
               pipelineProject ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -102,8 +105,8 @@ export function Dashboard(): React.JSX.Element {
                 <Activity className="h-4 w-4" />
               )
             }
-            detail={pipelineProject ?? "No active pipeline"}
-            variant={pipelineProject ? "active" : "default"}
+            detail={pipelineProject ?? 'No active pipeline'}
+            variant={pipelineProject ? 'active' : 'default'}
           />
         </div>
 
@@ -137,7 +140,7 @@ export function Dashboard(): React.JSX.Element {
               <FolderOpen className="h-10 w-10 mb-3 opacity-40" />
               <p className="text-sm">No projects yet</p>
               <p className="text-xs mt-1">
-                Create a ROADMAP.json in{" "}
+                Create a ROADMAP.json in{' '}
                 <code className="bg-muted px-1 rounded">projects/</code> or use
                 the button above.
               </p>
@@ -164,16 +167,16 @@ function KpiCard({
   value,
   icon,
   detail,
-  variant = "default",
+  variant = 'default',
 }: {
   title: string
   value: string
   icon: React.ReactNode
   detail?: string
-  variant?: "default" | "active"
+  variant?: 'default' | 'active'
 }): React.JSX.Element {
   return (
-    <Card className={variant === "active" ? "border-success/30" : ""}>
+    <Card className={variant === 'active' ? 'border-success/30' : ''}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -250,7 +253,7 @@ function ProjectCard({
               {project.total_calls} calls
             </span>
             <Badge variant="outline" className="text-xs">
-              {isRunning ? "running" : project.status}
+              {isRunning ? 'running' : project.status}
             </Badge>
           </div>
         </CardContent>

@@ -1,8 +1,3 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useLogs } from "@/hooks/use-queries"
-import { api, type LogEntry } from "@/lib/api"
 import {
   AlertTriangle,
   ChevronRight,
@@ -10,8 +5,13 @@ import {
   FolderOpen,
   RefreshCw,
   X,
-} from "lucide-react"
-import { useState } from "react"
+} from 'lucide-react'
+import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useLogs } from '@/hooks/use-queries'
+import { api, type LogEntry } from '@/lib/api'
 
 export function Logs({
   projectName,
@@ -33,14 +33,17 @@ export function Logs({
       const data = await api.getLogContent(projectName, slug, logName)
       setLogContent(data.content)
     } catch {
-      setLogContent("Failed to load log content.")
+      setLogContent('Failed to load log content.')
     } finally {
       setLoadingContent(false)
     }
   }
 
   return (
-    <div className="grid grid-cols-[280px_1fr] gap-4" style={{ minHeight: "50vh" }}>
+    <div
+      className="grid grid-cols-[280px_1fr] gap-4"
+      style={{ minHeight: '50vh' }}
+    >
       {/* Left panel — log tree */}
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -55,30 +58,43 @@ export function Logs({
             onClick={() => refetch()}
             disabled={isLoading}
           >
-            <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`}
+            />
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <nav aria-label="Task logs" className="overflow-y-auto" style={{ maxHeight: "60vh" }}>
+          <nav
+            aria-label="Task logs"
+            className="overflow-y-auto"
+            style={{ maxHeight: '60vh' }}
+          >
             {entries.length === 0 && (
               <p className="text-xs text-muted-foreground p-4 text-center">
                 No logs yet.
               </p>
             )}
             {entries.map((entry) => (
-              <div key={entry.task_slug} className="border-b border-border last:border-0">
+              <div
+                key={entry.task_slug}
+                className="border-b border-border last:border-0"
+              >
                 <button
                   className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 transition"
                   onClick={() =>
-                    setExpanded(expanded === entry.task_slug ? null : entry.task_slug)
+                    setExpanded(
+                      expanded === entry.task_slug ? null : entry.task_slug,
+                    )
                   }
                 >
                   <ChevronRight
                     className={`h-3 w-3 shrink-0 transition-transform ${
-                      expanded === entry.task_slug ? "rotate-90" : ""
+                      expanded === entry.task_slug ? 'rotate-90' : ''
                     }`}
                   />
-                  <span className="truncate font-medium text-xs">{entry.task_slug}</span>
+                  <span className="truncate font-medium text-xs">
+                    {entry.task_slug}
+                  </span>
                   <Badge variant="outline" className="ml-auto text-xs shrink-0">
                     {entry.logs.length}
                   </Badge>
@@ -94,9 +110,11 @@ export function Logs({
                         <button
                           key={key}
                           className={`w-full flex items-center gap-2 px-6 py-1.5 text-left text-xs hover:bg-muted/60 transition ${
-                            activeLog === key ? "bg-muted" : ""
+                            activeLog === key ? 'bg-muted' : ''
                           }`}
-                          onClick={() => handleLogClick(entry.task_slug, log.name)}
+                          onClick={() =>
+                            handleLogClick(entry.task_slug, log.name)
+                          }
                         >
                           <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
                           <span className="truncate">{log.name}</span>
@@ -122,7 +140,7 @@ export function Logs({
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5" />
-            {activeLog ? activeLog.split("/").pop() : "Log Viewer"}
+            {activeLog ? activeLog.split('/').pop() : 'Log Viewer'}
           </CardTitle>
           {activeLog && (
             <Button
@@ -164,7 +182,7 @@ export function Logs({
 function FailureReport({
   report,
 }: {
-  report: NonNullable<LogEntry["failure_report"]>
+  report: NonNullable<LogEntry['failure_report']>
 }): React.JSX.Element {
   return (
     <div className="px-4 py-2 bg-destructive/5 border-t border-destructive/10">

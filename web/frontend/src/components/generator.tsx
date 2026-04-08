@@ -1,28 +1,33 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
+import { AlertTriangle, Check, Loader2, Sparkles, X } from 'lucide-react'
+import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { useAvailableModels, useGenerateRoadmap, useModels, useUpdateRoadmap } from "@/hooks/use-queries"
-import { AlertTriangle, Check, Loader2, Sparkles, X } from "lucide-react"
-import { useState } from "react"
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  useAvailableModels,
+  useGenerateRoadmap,
+  useModels,
+  useUpdateRoadmap,
+} from '@/hooks/use-queries'
 
-const ECOSYSTEMS = ["python", "deno", "node", "go", "rust"] as const
+const ECOSYSTEMS = ['python', 'deno', 'node', 'go', 'rust'] as const
 
 export function Generator({
   projectName,
 }: {
   projectName: string
 }): React.JSX.Element {
-  const [description, setDescription] = useState("")
-  const [ecosystem, setEcosystem] = useState<string>("python")
+  const [description, setDescription] = useState('')
+  const [ecosystem, setEcosystem] = useState<string>('python')
   const [preview, setPreview] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [accepted, setAccepted] = useState(false)
@@ -33,10 +38,13 @@ export function Generator({
   const { data: models = [] } = useModels(projectName)
   const { data: catalog = [] } = useAvailableModels()
 
-  const architectModel = models.find((m) => m.agent === "architect")?.model ?? ""
+  const architectModel =
+    models.find((m) => m.agent === 'architect')?.model ?? ''
   const architectMissing = !architectModel
   const architectInvalid =
-    !architectMissing && catalog.length > 0 && !catalog.find((c) => c.full_id === architectModel)
+    !architectMissing &&
+    catalog.length > 0 &&
+    !catalog.find((c) => c.full_id === architectModel)
   const architectBlocked = architectMissing || architectInvalid
 
   const handleGenerate = async () => {
@@ -111,7 +119,11 @@ export function Generator({
             </div>
             <Button
               onClick={handleGenerate}
-              disabled={generateMutation.isPending || !description.trim() || architectBlocked}
+              disabled={
+                generateMutation.isPending ||
+                !description.trim() ||
+                architectBlocked
+              }
             >
               {generateMutation.isPending ? (
                 <>
@@ -131,8 +143,8 @@ export function Generator({
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
               <span>
                 {architectMissing
-                  ? "No architect model configured. Set one in the Models tab before generating a roadmap."
-                  : "The configured architect model is not available through your connected providers. Update it in the Models tab."}
+                  ? 'No architect model configured. Set one in the Models tab before generating a roadmap.'
+                  : 'The configured architect model is not available through your connected providers. Update it in the Models tab.'}
               </span>
             </div>
           )}
@@ -147,12 +159,13 @@ export function Generator({
       {preview && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm">
-              Generated ROADMAP Preview
-            </CardTitle>
+            <CardTitle className="text-sm">Generated ROADMAP Preview</CardTitle>
             <div className="flex items-center gap-2">
               {accepted ? (
-                <Badge variant="default" className="bg-success text-success-foreground">
+                <Badge
+                  variant="default"
+                  className="bg-success text-success-foreground"
+                >
                   <Check className="h-3 w-3 mr-1" />
                   Saved
                 </Badge>

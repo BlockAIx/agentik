@@ -1,10 +1,10 @@
-import { CreateProjectDialog } from "@/components/create-project"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { useWsStore } from "@/stores/ws-store"
-import { ArrowLeft, Settings2, Wifi, WifiOff } from "lucide-react"
-import { Link, useNavigate } from "react-router-dom"
+import { ArrowLeft, Settings2, Wifi, WifiOff } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { CreateProjectDialog } from '@/components/create-project'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { useWsStore } from '@/stores/ws-store'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -44,7 +44,7 @@ export function Layout({
                     onClick={() => navigate(-1)}
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
-                    {backLabel ?? "Back"}
+                    {backLabel ?? 'Back'}
                   </Button>
                 ) : (
                   <Link to={backTo!}>
@@ -54,7 +54,7 @@ export function Layout({
                       className="h-8 px-2 gap-1.5 text-xs"
                     >
                       <ArrowLeft className="h-3.5 w-3.5" />
-                      {backLabel ?? "Back"}
+                      {backLabel ?? 'Back'}
                     </Button>
                   </Link>
                 )}
@@ -69,9 +69,7 @@ export function Layout({
               </Link>
             )}
             {title && (
-              <h1 className="text-lg font-semibold tracking-tight">
-                {title}
-              </h1>
+              <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
             )}
             {badge}
             {onCreated && (
@@ -89,7 +87,7 @@ export function Layout({
                 className="h-8 px-2 text-xs gap-1.5"
               >
                 <Settings2 className="h-3.5 w-3.5" />
-                {!backTo && "Settings"}
+                {!backTo && 'Settings'}
               </Button>
             </Link>
             {connected ? (
@@ -101,10 +99,7 @@ export function Layout({
                 Live
               </Badge>
             ) : (
-              <Badge
-                variant="outline"
-                className="gap-1 text-muted-foreground"
-              >
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
                 <WifiOff className="h-3 w-3" />
                 Offline
               </Badge>

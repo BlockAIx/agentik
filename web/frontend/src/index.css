@@ -180,10 +180,15 @@ body {
   body {
     @apply bg-background text-foreground;
   }
-  button:not(:disabled), [role="button"]:not([aria-disabled="true"]), a[href], select:not(:disabled), label[for] {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  select:not(:disabled),
+  label[for] {
     cursor: pointer;
   }
-  button:disabled, [aria-disabled="true"] {
+  button:disabled,
+  [aria-disabled="true"] {
     cursor: not-allowed;
   }
 
@@ -194,7 +199,8 @@ body {
   /* Firefox */
   * {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklch, var(--foreground) 20%, transparent) transparent;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 20%, transparent)
+      transparent;
   }
 
   /* Webkit (Chrome, Edge, Safari) */

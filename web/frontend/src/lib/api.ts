@@ -13,7 +13,7 @@ export interface TaskInfo {
   id: number
   heading: string
   title: string
-  status: "done" | "ready" | "blocked"
+  status: 'done' | 'ready' | 'blocked'
   agent: string
   tokens: number
   deps: string[]
@@ -115,7 +115,7 @@ export interface AvailableModel {
   model: string
 }
 
-const BASE = ""
+const BASE = ''
 
 /** Typed fetch wrapper — throws on non-2xx responses. */
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -131,32 +131,50 @@ export const api = {
   /* ── Projects ── */
 
   listProjects: (signal?: AbortSignal) =>
-    fetchJson<ProjectSummary[]>("/api/projects", { signal }),
+    fetchJson<ProjectSummary[]>('/api/projects', { signal }),
 
-  createProject: (name: string, ecosystem: string, preamble: string, git: boolean) =>
-    fetchJson<{ created: boolean; name: string; path: string }>("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, ecosystem, preamble, git }),
-    }),
+  createProject: (
+    name: string,
+    ecosystem: string,
+    preamble: string,
+    git: boolean,
+  ) =>
+    fetchJson<{ created: boolean; name: string; path: string }>(
+      '/api/projects',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, ecosystem, preamble, git }),
+      },
+    ),
 
   getProject: (name: string, signal?: AbortSignal) =>
     fetchJson<ProjectDetail>(`/api/projects/${name}`, { signal }),
 
   getRoadmap: (name: string, signal?: AbortSignal) =>
-    fetchJson<Record<string, unknown>>(`/api/projects/${name}/roadmap`, { signal }),
+    fetchJson<Record<string, unknown>>(`/api/projects/${name}/roadmap`, {
+      signal,
+    }),
 
   updateRoadmap: (name: string, data: Record<string, unknown>) =>
-    fetchJson<{ saved: boolean; valid: boolean }>(`/api/projects/${name}/roadmap`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
+    fetchJson<{ saved: boolean; valid: boolean }>(
+      `/api/projects/${name}/roadmap`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      },
+    ),
 
   getLogs: (name: string, signal?: AbortSignal) =>
     fetchJson<LogEntry[]>(`/api/projects/${name}/logs`, { signal }),
 
-  getLogContent: (name: string, taskSlug: string, logName: string, signal?: AbortSignal) =>
+  getLogContent: (
+    name: string,
+    taskSlug: string,
+    logName: string,
+    signal?: AbortSignal,
+  ) =>
     fetchJson<{ content: string; name: string; task_slug: string }>(
       `/api/projects/${name}/logs/${taskSlug}/${logName}`,
       { signal },
@@ -167,15 +185,15 @@ export const api = {
       valid: boolean
       errors: Array<{ task: string; message: string }>
       warnings: Array<{ task: string; message: string }>
-    }>(`/api/projects/${name}/validate`, { method: "POST" }),
+    }>(`/api/projects/${name}/validate`, { method: 'POST' }),
 
   getProjectBudget: (name: string, signal?: AbortSignal) =>
     fetchJson<ProjectBudget>(`/api/projects/${name}/budget`, { signal }),
 
   updateProjectBudget: (name: string, data: Record<string, unknown>) =>
     fetchJson<{ saved: boolean }>(`/api/projects/${name}/budget`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
 
@@ -183,38 +201,46 @@ export const api = {
 
   runPipeline: (name: string, verbose = false) =>
     fetchJson<{ started: boolean }>(`/api/projects/${name}/run`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ verbose }),
     }),
 
   getPipelineStatus: (signal?: AbortSignal) =>
-    fetchJson<{ running: boolean; project: string | null }>("/api/pipeline/status", { signal }),
+    fetchJson<{ running: boolean; project: string | null }>(
+      '/api/pipeline/status',
+      { signal },
+    ),
 
   stopPipeline: (name: string) =>
-    fetchJson<{ stopped: boolean }>(`/api/projects/${name}/stop`, { method: "POST" }),
+    fetchJson<{ stopped: boolean }>(`/api/projects/${name}/stop`, {
+      method: 'POST',
+    }),
 
   /* ── Roadmap generation ── */
 
   generateRoadmap: (name: string, description: string, ecosystem: string) =>
-    fetchJson<Record<string, unknown>>(`/api/projects/${name}/generate-roadmap`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description, ecosystem }),
-    }),
+    fetchJson<Record<string, unknown>>(
+      `/api/projects/${name}/generate-roadmap`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description, ecosystem }),
+      },
+    ),
 
   /* ── Global config ── */
 
   getGlobalBudget: (signal?: AbortSignal) =>
-    fetchJson<GlobalBudget>("/api/budget", { signal }),
+    fetchJson<GlobalBudget>('/api/budget', { signal }),
 
   getBudgetConfig: (signal?: AbortSignal) =>
-    fetchJson<BudgetConfig>("/api/config/budget", { signal }),
+    fetchJson<BudgetConfig>('/api/config/budget', { signal }),
 
   updateBudgetConfig: (data: BudgetConfig) =>
-    fetchJson<{ saved: boolean }>("/api/config/budget", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+    fetchJson<{ saved: boolean }>('/api/config/budget', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
 
@@ -225,23 +251,25 @@ export const api = {
 
   updateModel: (name: string, agent: string, model: string) =>
     fetchJson<{ saved: boolean }>(`/api/projects/${name}/models/${agent}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model }),
     }),
 
   /* ── Providers ── */
 
   getProviders: (signal?: AbortSignal) =>
-    fetchJson<{ providers: ProviderInfo[]; raw: string }>("/api/providers", { signal }),
+    fetchJson<{ providers: ProviderInfo[]; raw: string }>('/api/providers', {
+      signal,
+    }),
 
   getAvailableModels: (signal?: AbortSignal) =>
-    fetchJson<AvailableModel[]>("/api/providers/models", { signal }),
+    fetchJson<AvailableModel[]>('/api/providers/models', { signal }),
 
   refreshAvailableModels: () =>
     fetchJson<{ count: number; models: AvailableModel[] }>(
-      "/api/providers/models/refresh",
-      { method: "POST" },
+      '/api/providers/models/refresh',
+      { method: 'POST' },
     ),
 
   providerLogin: (provider?: string) =>
@@ -259,14 +287,14 @@ export const api = {
         env_var: string
         docs_url: string
       }>
-    }>("/api/providers/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: provider ?? "" }),
+    }>('/api/providers/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: provider ?? '' }),
     }),
 
   providerLogout: () =>
-    fetchJson<{ output: string; success: boolean }>("/api/providers/logout", {
-      method: "POST",
+    fetchJson<{ output: string; success: boolean }>('/api/providers/logout', {
+      method: 'POST',
     }),
 }

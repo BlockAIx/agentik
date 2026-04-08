@@ -1,9 +1,9 @@
-import { ErrorBoundary } from "@/components/error-boundary"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { useWsStore } from "@/stores/ws-store"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import React, { Suspense, useEffect } from "react"
-import { Route, Routes } from "react-router-dom"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React, { Suspense, useEffect } from 'react'
+import { Route, Routes } from 'react-router-dom'
+import { ErrorBoundary } from '@/components/error-boundary'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { useWsStore } from '@/stores/ws-store'
 
 /** Wrap React.lazy to auto-reload once when a chunk fails (stale build). */
 function lazyRetry<T extends React.ComponentType<unknown>>(
@@ -12,15 +12,15 @@ function lazyRetry<T extends React.ComponentType<unknown>>(
   return React.lazy(() =>
     factory()
       .then((mod) => {
-        sessionStorage.removeItem("chunk-retry")
+        sessionStorage.removeItem('chunk-retry')
         return mod
       })
       .catch((err: unknown) => {
-        const key = "chunk-retry"
+        const key = 'chunk-retry'
         if (!sessionStorage.getItem(key)) {
-          sessionStorage.setItem(key, "1")
+          sessionStorage.setItem(key, '1')
           const url = new URL(window.location.href)
-          url.searchParams.set("_cb", Date.now().toString())
+          url.searchParams.set('_cb', Date.now().toString())
           window.location.replace(url.toString())
           return new Promise<{ default: T }>(() => {})
         }
@@ -31,13 +31,15 @@ function lazyRetry<T extends React.ComponentType<unknown>>(
 }
 
 const Dashboard = lazyRetry(() =>
-  import("@/components/dashboard").then((m) => ({ default: m.Dashboard })),
+  import('@/components/dashboard').then((m) => ({ default: m.Dashboard })),
 )
 const ProjectView = lazyRetry(() =>
-  import("@/components/project-view").then((m) => ({ default: m.ProjectView })),
+  import('@/components/project-view').then((m) => ({ default: m.ProjectView })),
 )
 const SettingsPage = lazyRetry(() =>
-  import("@/components/settings-page").then((m) => ({ default: m.SettingsPage })),
+  import('@/components/settings-page').then((m) => ({
+    default: m.SettingsPage,
+  })),
 )
 
 const queryClient = new QueryClient({
