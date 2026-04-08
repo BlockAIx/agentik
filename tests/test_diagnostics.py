@@ -94,3 +94,35 @@ class TestExtractFailingTest:
         from runner.diagnostics import _extract_failing_test
 
         assert _extract_failing_test(None) is None
+
+
+class TestIdentifyFailingTask:
+    def test_matches_task_by_output_file(self, tmp_project: Path) -> None:
+        from runner.diagnostics import identify_failing_task
+
+        batch = ["## 002 - Second Task", "## 003 - Third Task"]
+        output = "FAILED tests/test_other.py::test_something - AssertionError"
+        result = identify_failing_task(output, batch, tmp_project)
+        assert result == "## 002 - Second Task"
+
+    def test_matches_second_task(self, tmp_project: Path) -> None:
+        from runner.diagnostics import identify_failing_task
+
+        batch = ["## 002 - Second Task", "## 003 - Third Task"]
+        output = "FAILED tests/test_util.py::test_edge - ValueError"
+        result = identify_failing_task(output, batch, tmp_project)
+        assert result == "## 003 - Third Task"
+
+    def test_falls_back_to_first_when_no_match(self, tmp_project: Path) -> None:
+        from runner.diagnostics import identify_failing_task
+
+        batch = ["## 002 - Second Task", "## 003 - Third Task"]
+        output = "some random error with no file paths"
+        result = identify_failing_task(output, batch, tmp_project)
+        assert result == batch[0]
+
+    def test_empty_output(self, tmp_project: Path) -> None:
+        from runner.diagnostics import identify_failing_task
+
+        batch = ["## 002 - Second Task"]
+        assert identify_failing_task("", batch, tmp_project) == batch[0]

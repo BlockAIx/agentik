@@ -412,6 +412,7 @@ def process_milestone(task: str, project_dir: Path) -> None:
 
 def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
     """Build *batch* tasks in parallel, then test/static/document once and commit per-task."""
+    from runner.diagnostics import identify_failing_task  # noqa: PLC0415
     from runner.workspace import ensure_feature_branch  # noqa: PLC0415
 
     _console.print()
@@ -478,16 +479,16 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
     passed, output = run_tests(project_dir)
 
     if not passed:
-        # Fix loop — use first task as context; the agent sees all code + test output.
         fix_logs: str | None = output
         for attempt in range(1, MAX_ATTEMPTS):
+            target = identify_failing_task(fix_logs or "", batch, project_dir)
             _console.print(
                 f"\n[bold][2/4] Fix[/]  [dim](attempt {attempt + 1}/{MAX_ATTEMPTS})[/]"
             )
-            save_runner_state(project_dir, batch[0], attempt, fix_logs)
+            save_runner_state(project_dir, target, attempt, fix_logs)
             try:
                 run_opencode_build(
-                    batch[0],
+                    target,
                     project_dir,
                     fix_logs=fix_logs,
                     attempt=attempt,
@@ -522,7 +523,11 @@ def process_parallel_batch(batch: list[str], project_dir: Path) -> None:
         _console.print(
             f"[yellow]Static analysis issues found (attempt {_attempt + 1}/{_STATIC_FIX_MAX_ATTEMPTS}).[/]"
         )
-        run_opencode_static_fix(batch[0], project_dir, check_output)
+        run_opencode_static_fix(
+            identify_failing_task(check_output or "", batch, project_dir),
+            project_dir,
+            check_output,
+        )
     else:
         _console.print(
             "[yellow]⚠ Static analysis still failing after max attempts — proceeding.[/]"

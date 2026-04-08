@@ -103,3 +103,36 @@ def _extract_failing_test(fix_logs: str | None) -> str | None:
         return match3.group(1)
 
     return None
+
+
+def identify_failing_task(
+    test_output: str, batch: list[str], project_dir: "Path"
+) -> str:
+    """Identify which task in *batch* most likely caused test failures.
+
+    Matches file paths mentioned in the test output against each task's
+    ``outputs`` list.  Returns the best-matching task heading, or ``batch[0]``
+    as a fallback.
+    """
+    from runner.roadmap import get_task_outputs  # noqa: PLC0415
+
+    # Collect all file paths mentioned in test output.
+    mentioned = set(re.findall(r"[\w/\\.-]+\.(?:py|ts|tsx|js|jsx|go|rs)", test_output))
+
+    best_task = batch[0]
+    best_score = 0
+
+    for task in batch:
+        outputs = get_task_outputs(task, project_dir) or []
+        score = 0
+        for out in outputs:
+            out_norm = out.replace("\\", "/")
+            for m in mentioned:
+                m_norm = m.replace("\\", "/")
+                if m_norm.endswith(out_norm) or out_norm.endswith(m_norm):
+                    score += 1
+        if score > best_score:
+            best_score = score
+            best_task = task
+
+    return best_task
