@@ -537,6 +537,11 @@ def run_opencode_build(
         f"\n## Project context\n{preamble_text}\n" if preamble_text else ""
     )
 
+    # Notes from dependency tasks (shared context store).
+    from runner.context_store import collect_dependency_notes  # noqa: PLC0415
+
+    dep_notes_block = collect_dependency_notes(task, project_dir)
+
     # Dockerfile rules — only injected when the project actually has a Dockerfile.
     has_dockerfile = (project_dir / "Dockerfile").exists()
     dockerfile_rules = (
@@ -587,6 +592,7 @@ def run_opencode_build(
             PROJECT_CONTEXT=project_context_block,
             DOCKERFILE_RULES=dockerfile_rules,
             DEPLOY_RULES=deploy_rules,
+            DEP_NOTES=dep_notes_block,
         )
     else:
         truncated_logs = fix_logs[-3000:] if len(fix_logs) > 3000 else fix_logs

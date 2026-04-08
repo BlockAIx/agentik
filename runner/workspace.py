@@ -423,6 +423,9 @@ opencode.jsonc
 
 # Runner agent logs (per-invocation; auto-generated)
 logs/
+
+# Runner inter-task context store
+.task_notes/
 """
 
 

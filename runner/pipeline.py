@@ -203,6 +203,15 @@ def finalise_task(
 
     _console.print("\n[bold][4/4] Commit & merge[/]")
     mark_done(task, project_dir)
+
+    # Collect task notes for downstream dependents.
+    from runner.context_store import save_task_notes  # noqa: PLC0415
+
+    notes_file = project_dir / ".task_notes.md"
+    if notes_file.exists():
+        save_task_notes(task, project_dir, notes_file.read_text(encoding="utf-8"))
+        notes_file.unlink()
+
     commit_and_merge(task, project_dir, task_outputs=task_outputs)
     try_deploy_hook(task, project_dir)
 
