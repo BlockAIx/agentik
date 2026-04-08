@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, Loader2, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +19,26 @@ import {
   useModels,
   useUpdateRoadmap,
 } from '@/hooks/use-queries'
+
+function GeneratingOverlay(): React.JSX.Element {
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-4 p-8 rounded-xl bg-card border shadow-lg">
+        <div className="relative flex items-center justify-center">
+          <div className="absolute h-16 w-16 animate-ping rounded-full bg-primary/20" />
+          <div className="relative h-12 w-12 animate-spin rounded-full border-4 border-muted border-t-primary" />
+        </div>
+        <div className="space-y-1 text-center">
+          <p className="font-medium">Generating ROADMAP</p>
+          <p className="text-sm text-muted-foreground">
+            The architect agent is designing your project...
+          </p>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
 
 const ECOSYSTEMS = ['python', 'deno', 'node', 'go', 'rust'] as const
 
@@ -83,6 +104,7 @@ export function Generator({
 
   return (
     <div className="space-y-4">
+      {generateMutation.isPending && <GeneratingOverlay />}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">

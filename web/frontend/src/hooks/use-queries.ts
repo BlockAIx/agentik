@@ -163,6 +163,8 @@ export function useUpdateRoadmap() {
       api.updateRoadmap(v.name, v.data),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: keys.roadmap(v.name) })
+      qc.invalidateQueries({ queryKey: keys.project(v.name) })
+      qc.invalidateQueries({ queryKey: keys.projects })
     },
   })
 }
